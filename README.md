@@ -1,6 +1,9 @@
 # MetroBox
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/bdba3da5-4afc-4812-afcd-bc47bc0afcbc" />
 
+Supported Platform: Linux. 
 
+Not Supported (Yet): Windows, MacOs
 
 Browse, search and stream movies and series from MovieBox with a featured billboard,
 rows, profiles, My List, continue watching, downloads, and a built-in player with
