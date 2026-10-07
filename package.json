@@ -1,0 +1,10 @@
+{
+  "name": "metrobox",
+  "productName": "MetroBox",
+  "version": "2.0.6",
+  "description": "MetroBox - Material 3 streaming client. Made by JayJoice.",
+  "author": "JayJoice",
+  "main": "main.js",
+  "desktopName": "metrobox.desktop",
+  "license": "MIT"
+}
