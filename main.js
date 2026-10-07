@@ -157,6 +157,7 @@ app.whenReady().then(async () => {
   ok('shell:external', (url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); return true; });
 
   createWindow();
+  setTimeout(() => { checkUpdates(false).catch(() => { /* silent at launch */ }); }, 5000);
   if (process.env.MB_TEST) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
