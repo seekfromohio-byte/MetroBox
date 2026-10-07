@@ -65,7 +65,7 @@ export function openPlayer(ctx) {
   const hideMsg = () => { msg.style.display = 'none'; };
   const setSpin = (on) => { clearTimeout(st.spinT); if (on) st.spinT = setTimeout(() => { spinner.style.display = ''; }, 250); else spinner.style.display = 'none'; };
   function toggle() { if (video.paused) { video.play().catch(() => {}); flash('play_arrow'); } else { video.pause(); flash('pause'); } }
-  function skip(sec) { video.currentTime = clamp(video.currentTime + sec, 0, video.duration || 1e9); flash(sec < 0 ? 'replay_10' : 'forward_10'); }
+  function skip(sec) { if (st.trans) { seekTrans(video.currentTime + (st.transBase || 0) + sec); flash(sec < 0 ? 'replay_10' : 'forward_10'); return; } video.currentTime = clamp(video.currentTime + sec, 0, video.duration || 1e9); flash(sec < 0 ? 'replay_10' : 'forward_10'); }
   function setFs(on) { st.fs = on; window.mb.setFullscreen(on); fsBtn.replaceChildren(icon(on ? 'fullscreen_exit' : 'fullscreen')); }
   async function pip() { try { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await video.requestPictureInPicture(); } catch (e) { toast('Picture in picture isn’t available here.'); } }
   function wake() {
@@ -90,24 +90,39 @@ export function openPlayer(ctx) {
     const seen = new Set(); st.sources = opts.filter((o) => (seen.has(o.url) ? false : seen.add(o.url)));
     if (!st.sources.length) { fail('No playable streams were found for this title.'); return; }
     const want = P.quality === 'auto' ? Infinity : +P.quality;
-    const hevc = (x) => /hevc|h\.?265|hvc1|hev1/i.test(x.codec || '');
+    // With hardware HEVC (VAAPI on Linux), HEVC sources are just normal sources.
+    const canHevc = !!(window.MediaSource && MediaSource.isTypeSupported && MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L120.90"'));
+    const hevc = (x) => !canHevc && /hevc|h\.?265|hvc1|hev1/i.test(x.codec || '');
     let pick = st.sources.findIndex((x) => x.height <= want && !hevc(x));
     if (pick < 0) pick = st.sources.findIndex((x) => !hevc(x));
     if (pick < 0) pick = st.sources.findIndex((x) => x.height <= want);
     st.idx = Math.max(0, pick);
     let pos = startAt;
     if (pos === undefined) { const pr = getProgress(st.ctx.item.id, st.ctx.se, st.ctx.ep); pos = P.resume && pr && pr.dur && pr.pos > 20 && pr.pos / pr.dur < 0.94 ? pr.pos : 0; }
-    // This stream's video codec can never be drawn here (no HEVC decoder) — hand off before playing any black frames.
-    if (pick < 0 || hevc(st.sources[st.idx])) { noPicture(pos); return; }
+    // No hardware HEVC: transcode locally with ffmpeg when no external player is configured, else hand off.
+    st.trans = null; st.transBase = 0;
+    if (pick < 0 || hevc(st.sources[st.idx])) {
+      const det = await window.mb.detectPlayers().catch(() => ({}));
+      const ext = (P.fallback === 'vlc' && det.vlc) || (P.fallback === 'mpv' && det.mpv);
+      if (det.ffmpeg && !ext) st.trans = {};
+      else { noPicture(pos); return; }
+    }
     start(pos);
     loadCaptions(st.sources[st.idx].streamId, st.ctx.pid);
   }
   function destroyEngine() { if (st.dash) { try { st.dash.reset(); } catch { /* ignore */ } st.dash = null; } st.levels = []; st.level = 'auto'; }
-  function start(pos) {
-    destroyEngine(); hideMsg(); setSpin(true); st.decodeOk = false; st.blankSince = 0;
+  async function start(pos) {
+    destroyEngine(); hideMsg(); setSpin(true); st.decodeOk = false; st.blankSince = 0; st.transSeeking = false;
     const o = st.sources[st.idx];
     video.playbackRate = P.speed; video.volume = P.volume; video.muted = P.muted;
-    if (o.dash) {
+    if (st.trans) {
+      try {
+        const r = await window.mb.transcode(o, { ss: pos || 0 });
+        if (st.dead) return;
+        st.transBase = pos || 0;
+        video.src = (r && r.src) || r; video.play().catch(() => { });
+      } catch (e) { if (!st.dead) noPicture(pos); return; }
+    } else if (o.dash) {
       const dp = window.dashjs.MediaPlayer().create();
       dp.updateSettings({ debug: { logLevel: 1 }, streaming: { buffer: { fastSwitchEnabled: true, bufferTimeAtTopQuality: 40, bufferTimeAtTopQualityLongForm: 60, bufferToKeep: 30 }, retryAttempts: { MediaSegment: 3, MPD: 3 }, abr: { autoSwitchBitrate: { video: true, audio: true } } } });
       dp.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
@@ -166,8 +181,12 @@ export function openPlayer(ctx) {
     video.pause(); setSpin(false);
     const { item, se, ep, pid } = st.ctx; const pos = posOverride ?? (video.currentTime || 0); const mode = P.fallback;
     const why = 'The built-in player can’t show this video’s format (usually HEVC / H.265), so you’d only get sound.';
-    const manual = () => {
-      const acts = [btn('Play in VLC', 'filled', () => handoff('vlc'), 'open_in_new'), btn('Play in mpv', 'tonal', () => handoff('mpv'))];
+    const manual = async () => {
+      const det = await window.mb.detectPlayers().catch(() => ({}));
+      const acts = [];
+      if (det.ffmpeg && !st.trans) acts.push(btn('Play here (transcoded)', 'tonal', () => { st.fallingBack = false; st.trans = {}; if (!st.sources.some((x) => !/hevc|h\.?265|hvc1|hev1/i.test(x.codec || ''))) st.idx = Math.min(st.idx, st.sources.length - 1); start(pos); }, 'auto_awesome'));
+      acts.push(btn('Play in VLC', det.vlc ? 'filled' : 'text', () => handoff('vlc'), 'open_in_new'));
+      if (det.mpv) acts.push(btn('Play in mpv', 'tonal', () => handoff('mpv')));
       const alt = st.sources.findIndex((x, i) => i !== st.idx);
       if (alt >= 0) acts.push(btn('Try another source', 'tonal', () => { st.fallingBack = false; st.idx = alt; start(pos); }));
       acts.push(btn('Close', 'text', () => destroy()));
@@ -246,6 +265,21 @@ export function openPlayer(ctx) {
   }
 
   // ---------- events
+  // Transcoded streams aren't seekable natively — seeking restarts ffmpeg at the target position.
+  function restartTrans(ss) {
+    if (st.transSeeking || st.dead) return;
+    st.transSeeking = true; setSpin(true);
+    window.mb.transcode(st.sources[st.idx], { ss }).then((r) => {
+      if (st.dead) return;
+      video.src = (r && r.src) || r; video.play().catch(() => { });
+      setTimeout(() => { st.transSeeking = false; }, 500);
+    }).catch(() => { st.transSeeking = false; });
+  }
+  function seekTrans(to) {
+    to = Math.max(0, to || 0);
+    if (to < 1.5) { st.transBase = 0; restartTrans(0); return; }
+    st.transBase = to; restartTrans(to);
+  }
   video.addEventListener('waiting', () => setSpin(true));
   for (const ev of ['playing', 'canplay', 'seeked']) video.addEventListener(ev, () => { setSpin(false); if (ev === 'playing') hideMsg(); });
   video.addEventListener('play', () => { playBtn.replaceChildren(icon('pause', true)); wake(); window.mb.keepAwake(!!P.keepAwake); });
@@ -260,9 +294,10 @@ export function openPlayer(ctx) {
   video.addEventListener('click', () => { clearTimeout(clickT); clickT = setTimeout(toggle, 230); });
   video.addEventListener('dblclick', () => { clearTimeout(clickT); setFs(!st.fs); });
   video.addEventListener('wheel', (e) => { e.preventDefault(); video.muted = false; video.volume = clamp(video.volume - Math.sign(e.deltaY) * 0.05, 0, 1); }, { passive: false });
+  const d = () => (st.trans ? 3600 : (isFinite(video.duration) && video.duration > 0 ? video.duration : 0));
   const pct = (e) => { const r = track.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width, 0, 1); };
   seek.addEventListener('pointermove', (e) => { const f = pct(e); tip.style.left = `${f * 100}%`; tip.textContent = fmtTime(f * (video.duration || 0)); });
-  seek.addEventListener('pointerdown', (e) => { seek.setPointerCapture(e.pointerId); seek.classList.add('drag'); const mv = (ev) => { if (isFinite(video.duration)) video.currentTime = pct(ev) * video.duration; tick(); }; mv(e); seek.onpointermove = (ev) => { mv(ev); tip.style.left = `${pct(ev) * 100}%`; }; seek.onpointerup = () => { seek.classList.remove('drag'); seek.onpointermove = null; seek.onpointerup = null; }; });
+  seek.addEventListener('pointerdown', (e) => { seek.setPointerCapture(e.pointerId); seek.classList.add('drag'); const mv = (ev) => { if (!d()) return; if (st.trans) { seekTrans(pct(ev) * d()); return; } video.currentTime = pct(ev) * d(); tick(); }; mv(e); seek.onpointermove = (ev) => { mv(ev); tip.style.left = `${pct(ev) * 100}%`; }; seek.onpointerup = () => { seek.classList.remove('drag'); seek.onpointermove = null; seek.onpointerup = null; }; });
   const offFs = window.mb.onFullscreen((on) => { st.fs = on; fsBtn.replaceChildren(icon(on ? 'fullscreen_exit' : 'fullscreen')); });
   const onKey = (e) => {
     if (document.querySelector('#dialog-layer .scrim') || e.target.tagName === 'INPUT' && e.target.type === 'text') return;
@@ -278,7 +313,7 @@ export function openPlayer(ctx) {
     else if (k === '<' || k === ',') { video.playbackRate = Math.max(0.25, video.playbackRate - 0.25); toast(`Speed ${video.playbackRate}×`, { ms: 900 }); } else if (k === '>' || k === '.') { video.playbackRate = Math.min(3, video.playbackRate + 0.25); toast(`Speed ${video.playbackRate}×`, { ms: 900 }); }
     else if (k === 'n' || k === 'N') goNext();
     else if (k === 'a' || k === 'A') aspBtn.click(); else if (k === 'p' || k === 'P') pip();
-    else if (/^[0-9]$/.test(k)) { if (isFinite(video.duration)) video.currentTime = video.duration * (+k / 10); }
+    else if (/^[0-9]$/.test(k)) { if (d()) { if (st.trans) seekTrans(d() * (+k / 10)); else video.currentTime = d() * (+k / 10); } }
     else if (k === 'Escape') { if ($('.pl-drawer', root)) $('.pl-drawer', root).remove(); else if (document.querySelector('.menu')) { /* menu handles it */ } else if (st.fs) setFs(false); else destroy(); }
     else if (k === '?') showShortcuts(); else used = false;
     if (used) e.preventDefault();
@@ -287,15 +322,16 @@ export function openPlayer(ctx) {
   if ('mediaSession' in navigator) { const ms = navigator.mediaSession; ms.setActionHandler('play', () => video.play()); ms.setActionHandler('pause', () => video.pause()); ms.setActionHandler('seekbackward', () => skip(-10)); ms.setActionHandler('seekforward', () => skip(10)); ms.setActionHandler('nexttrack', () => goNext()); }
 
   function tick() {
-    const d = video.duration; const c = video.currentTime;
+    const d = st.trans ? 3600 : (isFinite(video.duration) && video.duration > 0 ? video.duration : 0); const c = video.currentTime;
+    const ct = st.trans ? c + (st.transBase || 0) : c;
     if (isFinite(d) && d > 0) {
       fill.style.width = `${(c / d) * 100}%`; thumb.style.left = `${(c / d) * 100}%`;
       let b = 0; for (let i = 0; i < video.buffered.length; i++) if (video.buffered.start(i) <= c + 0.5) b = Math.max(b, video.buffered.end(i));
       buf.style.width = `${(b / d) * 100}%`; tDur.textContent = fmtTime(d);
-      if (!video.paused) saveProg(false);
-      if (!st.ended && nextEp() && d > 120 && d - c < 25 && !st.nextDismissed) showUpNext(0);
+      if (!video.paused && !st.trans) saveProg(false);
+      if (!st.ended && !st.trans && nextEp() && d > 120 && d - c < 25 && !st.nextDismissed) showUpNext(0);
     }
-    tCur.textContent = fmtTime(c);
+    tCur.textContent = fmtTime(ct);
     // Watchdog: time is advancing (audio) but no picture is ever produced -> unsupported video codec (usually HEVC).
     if (!st.decodeOk && !st.fallingBack && !video.paused && video.readyState >= 2 && c > 1.5) {
       const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : { totalVideoFrames: 1 };

@@ -21,6 +21,8 @@ if (!app.requestSingleInstanceLock()) { app.quit(); } else {
 }
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+// Enable VAAPI hardware video decode paths on Linux (HEVC where the GPU supports it).
+try { app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecodeLinuxGL'); } catch { /* ignore */ }
 // Hardware acceleration can be switched off in Settings (blank/green video on some GPU drivers). Must be decided before ready.
 try {
   const early = new Store(path.join(app.getPath('userData'), 'data')).get('settings', {}) || {};
@@ -32,7 +34,7 @@ function settings() { return (store.get('settings', {}) || {}); }
 // ---------- updates (HyperOS-style: check on launch, notify with what's new) ----------
 // Host a latest.json next to your deb releases and point UPDATE_URL at it:
 //   { "version": "2.0.7", "url": "https://…/metrobox_2.0.7_amd64.deb", "notes": "What's new…" }
-const UPDATE_URL = process.env.MB_UPDATE_URL || 'https://raw.githubusercontent.com/JayJoice/MetroBox/main/latest.json';
+const UPDATE_URL = process.env.MB_UPDATE_URL || 'https://raw.githubusercontent.com/seekfromohio-byte/MetroBox/main/latest.json';
 const cmpVer = (a, b) => {
   const pa = String(a).split('.').map((x) => parseInt(x) || 0); const pb = String(b).split('.').map((x) => parseInt(x) || 0);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
@@ -113,6 +115,7 @@ app.whenReady().then(async () => {
     const opts = await api.playOptions(id, se, ep);
     return opts.map((o) => ({ ...o, src: proxy.urlFor(o.url, o.headers) }));
   });
+  ok('api:transcode', ({ url, headers, ss }) => proxy.transcodeUrl(url, headers, ss));
   ok('api:captions', (id, sid) => api.captions(id, sid));
   ok('api:subtitle', async (url) => {
     const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20000) });
@@ -154,7 +157,40 @@ app.whenReady().then(async () => {
   ok('shell:external', (url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); return true; });
 
   createWindow();
-  setTimeout(() => { checkUpdates(false).catch(() => { /* silent at launch */ }); }, 5000);
+  if (process.env.MB_TEST) {
+    win.webContents.once('did-finish-load', () => {
+      setTimeout(async () => {
+        try { console.log('[CAP]', await win.webContents.executeJavaScript(`MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L120.90"')`)); } catch (e) {}
+        try {
+          await win.webContents.executeJavaScript(`(async () => {
+            const { openPlayer } = await import('./js/player.js');
+            const { getDetails } = await import('./js/data.js');
+            const d = await getDetails('5035568783390297904');
+            openPlayer({ item: d, se: 1, ep: 1, pid: d.id });
+          })()`);
+        } catch (e) { console.log('[E] open', e.message.slice(0, 120)); }
+        let ok = false;
+        for (let i = 0; i < 15; i++) {
+          await new Promise(r => setTimeout(r, 2000));
+          try {
+            const st = await win.webContents.executeJavaScript(`(() => { const v = document.querySelector('.player video'); if (!v) return null; const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : {}; return { t: +v.currentTime.toFixed(1), w: v.videoWidth, frames: q.totalVideoFrames || 0, paused: v.paused, rs: v.readyState, err: (v.error && v.error.code) || 0, msg: (document.querySelector('.pl-msg') || {}).textContent || null }; })()`);
+            console.log('[V]', JSON.stringify(st));
+            if (st && st.frames > 30 && st.t > 3) { ok = true; break; }
+          } catch (e) { console.log('[E] sample', e.message.slice(0, 80)); }
+        }
+        console.log(ok ? '[RESULT] TRANSCODE PLAYBACK OK' : '[RESULT] FAILED');
+        if (ok && process.env.MB_TEST_SEEK) {
+          await win.webContents.executeJavaScript(`window.__S = []; setInterval(() => { const v = document.querySelector('.player video'); if (!v) return; const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : {}; window.__S.push({ t: +v.currentTime.toFixed(1), frames: q.totalVideoFrames || 0, w: v.videoWidth, rs: v.readyState }); }, 2000); document.dispatchEvent(new KeyboardEvent('keydown', { key: '5' }))`);
+          await new Promise(r => setTimeout(r, 24000));
+          const samples = await win.webContents.executeJavaScript(`window.__S`);
+          samples.forEach((x) => console.log('[SEEK]', JSON.stringify(x)));
+          const good = samples.filter((x) => x.frames > 0 && x.w > 0).length;
+          console.log(good >= 3 ? '[RESULT] SEEK OK' : '[RESULT] SEEK FAILED');
+        }
+        app.exit(0);
+      }, 6000);
+    });
+  }
   app.on('activate', () => { if (!win) createWindow(); });
 });
 

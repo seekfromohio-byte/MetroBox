@@ -1,5 +1,5 @@
 {
-  "version": "2.0.7",
+  "version": "2.0.8",
   "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb",
-  "notes": "What's new since 2.0.1:\n- New MetroBox logo in the app and the interface\n- Update checker: MetroBox notifies you at launch when a new version is out, with release notes\n- Liquid Glass Mode: frosted, translucent glass surfaces for light and dark themes (Settings > Theme)\n- Faster playback start in VLC: resume works like the HyperOS updater should — about 3x faster\n- Streams are prefetched when you open a show, so pressing Play starts instantly\n- Built-in player hands HEVC streams to VLC/mpv instantly instead of showing black video"
+  "notes": "What's new in 2.0.8 - the built-in player works without VLC/mpv:\n- On PCs with Intel/AMD graphics (Skylake / RX460 or newer), HEVC streams now play directly in the built-in player using hardware decoding\n- On older PCs without HEVC hardware, the built-in player can now transcode HEVC to H.264 with ffmpeg (Settings > Player) - install ffmpeg if you don't have VLC or mpv\n- Seeking works in transcode mode\n- 'Play here (transcoded)' added to the format-unsupported dialog"
 }

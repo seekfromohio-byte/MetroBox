@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('mb', {
   search: (q, page) => call('api:search', q, page),
   details: (id) => call('api:details', id),
   play: (id, se, ep) => call('api:play', id, se, ep),
+  transcode: (o, opts) => call('api:transcode', { url: o.url, headers: o.headers, ss: (opts && opts.ss) || 0 }),
   captions: (id, sid) => call('api:captions', id, sid),
   subtitle: (url) => call('api:subtitle', url),
   detectPlayers: () => call('player:detect'),
