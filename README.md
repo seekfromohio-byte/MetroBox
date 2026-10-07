@@ -1,6 +1,6 @@
 # MetroBox
 
-Material Design 3, Netflix-style desktop client for MovieBox — made by JayJoice.
+
 
 Browse, search and stream movies and series from MovieBox with a featured billboard,
 rows, profiles, My List, continue watching, downloads, and a built-in player with
