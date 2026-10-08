@@ -1,7 +1,7 @@
 {
   "name": "metrobox",
   "productName": "MetroBox",
-  "version": "2.0.12",
+  "version": "2.0.13",
   "description": "MetroBox - Material 3 streaming client. Made by JayJoice.",
   "author": {
     "name": "JayJoice",
@@ -11,19 +11,16 @@
   "desktopName": "com.jayjoice.metrobox.desktop",
   "license": "MIT",
   "scripts": {
-    "build:renderer": "node scripts/build-renderer.mjs",
-    "start": "npm run build:renderer && electron .",
-    "dist": "npm run build:renderer && electron-builder",
-    "dist:linux": "npm run build:renderer && electron-builder --linux deb AppImage --x64",
-    "dist:flatpak": "npm run build:renderer && bash flatpak/build.sh",
-    "dist:win": "npm run build:renderer && electron-builder --win --x64 --arm64",
-    "dist:mac": "npm run build:renderer && electron-builder --mac dmg zip --universal"
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux deb AppImage --x64",
+    "dist:flatpak": "bash flatpak/build.sh",
+    "dist:win": "electron-builder --win --x64 --arm64",
+    "dist:mac": "electron-builder --mac dmg zip --universal"
   },
   "devDependencies": {
-    "@material/web": "2.5.0",
     "electron": "44.7.0",
-    "electron-builder": "26.15.3",
-    "esbuild": "0.28.2"
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.jayjoice.metrobox",
@@ -45,10 +42,7 @@
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "arch": ["x64", "arm64"]
         }
       ],
       "artifactName": "MetroBox-Setup.${ext}"
@@ -63,15 +57,11 @@
       "target": [
         {
           "target": "dmg",
-          "arch": [
-            "universal"
-          ]
+          "arch": ["universal"]
         },
         {
           "target": "zip",
-          "arch": [
-            "universal"
-          ]
+          "arch": ["universal"]
         }
       ],
       "artifactName": "MetroBox.${ext}"
@@ -81,15 +71,11 @@
       "target": [
         {
           "target": "deb",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         },
         {
           "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ],
       "artifactName": "metrobox_amd64.${ext}"

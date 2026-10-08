@@ -17,7 +17,7 @@ class Downloads extends EventEmitter {
   constructor(store, proxy, getSettings, videosDir = path.join(os.homedir(), 'Videos')) {
     super();
     this.store = store; this.proxy = proxy; this.getSettings = getSettings; this.videosDir = videosDir;
-    this.items = store.get('downloads', []).map((d) => (d.status === 'running' || d.status === 'queued' ? { ...d, status: 'paused', speed: 0 } : d));
+    this.items = store.get('downloads', []).map((d) => (d.status === 'running' || d.status === 'queued' ? { ...d, status: 'paused', progress: d.option && d.option.dash ? 0 : d.progress, speed: 0 } : d));
     this.jobs = new Map(); this.queue = [];
   }
 
@@ -51,31 +51,129 @@ class Downloads extends EventEmitter {
 
   _finish(item, err) {
     this.jobs.delete(item.id);
-    if (item.status === 'canceled' || item.status === 'paused') { this._save(); return this._pump(); }
-    if (err) { item.status = 'error'; item.error = String(err.message || err).slice(0, 200); try { fs.unlinkSync(`${item.file}.part`); } catch { /* none */ } } else { item.status = 'done'; item.progress = 1; item.speed = 0; }
+    if (item.status === 'canceled' || item.status === 'paused') {
+      const suffixes = item.status === 'canceled' || item.option.dash ? ['.part', '.part.mp4'] : [];
+      for (const suffix of [...suffixes, ...Array.from({ length: 4 }, (_, i) => `.part.seg${i}`)]) { try { fs.unlinkSync(`${item.file}${suffix}`); } catch { /* file may still be open on Windows */ } }
+      this._save(); return this._pump();
+    }
+    if (err) {
+      item.status = 'error'; item.error = String(err.message || err).slice(0, 200);
+      if (item.option.dash) { try { fs.unlinkSync(`${item.file}.part.mp4`); } catch { /* none */ } }
+    } else { item.status = 'done'; item.progress = 1; item.speed = 0; }
     this._save(); this._pump();
   }
 
   async _http(item) {
-    const ac = new AbortController(); this.jobs.set(item.id, { abort: () => ac.abort() });
+    const ac = new AbortController(); const rangeControllers = new Set();
+    this.jobs.set(item.id, { abort: () => { ac.abort(); rangeControllers.forEach((c) => c.abort()); } });
     const part = `${item.file}.part`;
     let have = 0; try { have = fs.statSync(part).size; } catch { /* fresh */ }
-    const headers = { ...item.option.headers, ...(have ? { Range: `bytes=${have}-` } : {}) };
-    const r = await fetch(item.option.url, { headers, signal: ac.signal });
-    if (!r.ok && r.status !== 206) throw new Error(`HTTP ${r.status}`);
-    if (r.status === 200) have = 0;
-    const total = have + (Number(r.headers.get('content-length')) || 0);
+    const headers = { ...item.option.headers };
+    if (have) {
+      const r = await fetch(item.option.url, { headers: { ...headers, Range: `bytes=${have}-` }, signal: ac.signal });
+      if (!r.ok && r.status !== 206) throw new Error(`HTTP ${r.status}`);
+      let expectedBytes;
+      if (r.status === 206) {
+        const range = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers.get('content-range') || '');
+        if (!range || Number(range[1]) !== have || (range[3] !== '*' && Number(range[2]) + 1 !== Number(range[3]))) throw new Error('The server returned an invalid resume range.');
+        expectedBytes = Number(range[2]) - have + 1;
+      }
+      await this._writeHttpResponse(item, r, part, r.status === 200 ? 0 : have, expectedBytes);
+      if (ac.signal.aborted) throw new Error('Download stopped.');
+      fs.renameSync(part, item.file);
+      return;
+    }
+
+    const probe = await fetch(item.option.url, { headers: { ...headers, Range: 'bytes=0-0' }, signal: ac.signal });
+    if (!probe.ok && probe.status !== 206) throw new Error(`HTTP ${probe.status}`);
+    const match = /^bytes 0-0\/(\d+)$/i.exec(probe.headers.get('content-range') || '');
+    const total = match ? Number(match[1]) : 0;
+    if (probe.status === 206 && total >= 16 * 1024 * 1024) {
+      await probe.body?.cancel();
+      try { await this._downloadRanges(item, part, total, headers, ac, rangeControllers); }
+      catch (e) {
+        for (let i = 0; i < 4; i++) { try { fs.unlinkSync(`${part}.seg${i}`); } catch { /* none */ } }
+        if (ac.signal.aborted) throw e;
+        const full = await fetch(item.option.url, { headers, signal: ac.signal });
+        if (full.status !== 200) throw new Error(`HTTP ${full.status}`);
+        await this._writeHttpResponse(item, full, part, 0);
+      }
+    } else if (probe.status === 200) {
+      await this._writeHttpResponse(item, probe, part, 0);
+    } else {
+      await probe.body?.cancel();
+      const full = await fetch(item.option.url, { headers, signal: ac.signal });
+      if (full.status !== 200) throw new Error(`HTTP ${full.status}`);
+      await this._writeHttpResponse(item, full, part, 0);
+    }
+    if (ac.signal.aborted) throw new Error('Download stopped.');
+    fs.renameSync(part, item.file);
+  }
+
+  async _writeHttpResponse(item, response, part, have, expectedBytes) {
+    const contentRange = /^bytes \d+-\d+\/(\d+)$/i.exec(response.headers.get('content-range') || '');
+    const total = contentRange ? Number(contentRange[1]) : have + (Number(response.headers.get('content-length')) || 0);
     item.size = total;
     const out = fs.createWriteStream(part, { flags: have ? 'a' : 'w' });
     let got = have; let last = Date.now(); let lastBytes = got;
-    const src = Readable.fromWeb(r.body);
-    src.on('data', (c) => {
-      got += c.length;
+    const src = Readable.fromWeb(response.body);
+    src.on('data', (chunk) => {
+      got += chunk.length;
       const now = Date.now();
-      if (now - last > 700) { item.speed = ((got - lastBytes) / (now - last)) * 1000; last = now; lastBytes = got; item.progress = total ? got / total : 0; this._save(); }
+      if (now - last >= 700) { item.speed = ((got - lastBytes) / (now - last)) * 1000; last = now; lastBytes = got; item.progress = total ? Math.min(0.999, got / total) : 0; this._save(); }
     });
     await pipeline(src, out);
-    fs.renameSync(part, item.file);
+    if (expectedBytes !== undefined && got - have !== expectedBytes) throw new Error('The resumed download was incomplete.');
+  }
+
+  async _downloadRanges(item, part, total, headers, parent, controllers) {
+    const count = Math.min(4, Math.max(2, Math.ceil(total / (16 * 1024 * 1024))));
+    const size = Math.ceil(total / count); const segments = [];
+    for (let i = 0; i < count; i++) {
+      const start = i * size; const end = Math.min(total - 1, start + size - 1);
+      segments.push({ i, start, end, path: `${part}.seg${i}`, length: 0 });
+    }
+    let next = 0; let received = 0; let last = Date.now(); let lastBytes = 0;
+    item.size = total; item.progress = 0; item.speed = 0; this._save();
+    const worker = async () => {
+      while (next < segments.length) {
+        const segment = segments[next++]; const controller = new AbortController(); controllers.add(controller);
+        const stop = () => controller.abort(); parent.signal.addEventListener('abort', stop, { once: true });
+        try {
+          const response = await fetch(item.option.url, { headers: { ...headers, Range: `bytes=${segment.start}-${segment.end}` }, signal: controller.signal });
+          const expectedRange = new RegExp(`^bytes ${segment.start}-${segment.end}/${total}$`, 'i');
+          if (response.status !== 206 || !expectedRange.test(response.headers.get('content-range') || '')) throw new Error('The server does not support reliable parallel downloads.');
+          const out = fs.createWriteStream(segment.path, { flags: 'w' });
+          const src = Readable.fromWeb(response.body);
+          src.on('data', (chunk) => {
+            segment.length += chunk.length; received += chunk.length;
+            const now = Date.now();
+            if (now - last >= 700) { item.speed = ((received - lastBytes) / (now - last)) * 1000; last = now; lastBytes = received; item.progress = Math.min(0.999, received / total); this._save(); }
+          });
+          await pipeline(src, out);
+          if (segment.length !== segment.end - segment.start + 1) throw new Error('A parallel download segment was incomplete.');
+        } catch (e) {
+          controllers.forEach((active) => active.abort());
+          throw e;
+        } finally { controllers.delete(controller); parent.signal.removeEventListener('abort', stop); }
+      }
+    };
+    try {
+      const results = await Promise.allSettled(Array.from({ length: count }, worker));
+      const failed = results.find((result) => result.status === 'rejected');
+      if (failed) throw failed.reason;
+      if (parent.signal.aborted) throw new Error('Download stopped.');
+      const out = fs.createWriteStream(part);
+      for (const segment of segments) await pipeline(fs.createReadStream(segment.path), out, { end: false });
+      await new Promise((resolve, reject) => { out.once('error', reject); out.end(resolve); });
+      if (parent.signal.aborted) throw new Error('Download stopped.');
+      segments.forEach((segment) => fs.unlinkSync(segment.path));
+    } catch (e) {
+      controllers.forEach((controller) => controller.abort());
+      segments.forEach((segment) => { try { fs.unlinkSync(segment.path); } catch { /* none */ } });
+      try { fs.unlinkSync(part); } catch { /* none */ }
+      throw e;
+    }
   }
 
   /** Index of the highest-resolution video stream in a DASH manifest (ffprobe), or null. */
@@ -103,7 +201,7 @@ class Downloads extends EventEmitter {
     const bin = detect(this.getSettings()).ffmpeg;
     const url = this.proxy.urlFor(item.option.url, item.option.headers);
     const best = await this._bestVideo(bin, url);
-    if (item.status === 'canceled') return;
+    if (item.status === 'canceled' || item.status === 'paused') return;
     return new Promise((resolve, reject) => {
       const args = ['-y', '-hide_banner', '-loglevel', 'info', '-i', url, '-map', best === null ? '0:v:0?' : `0:${best}`, '-map', '0:a?', '-c', 'copy', '-movflags', '+faststart', `${item.file}.part.mp4`];
       const p = spawn(bin, args, { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
@@ -128,11 +226,28 @@ class Downloads extends EventEmitter {
   cancel(id) {
     const it = this.items.find((d) => d.id === id); if (!it) return;
     it.status = 'canceled'; const j = this.jobs.get(id); if (j) j.abort();
-    for (const f of [`${it.file}.part`, `${it.file}.part.mp4`]) { try { fs.unlinkSync(f); } catch { /* none */ } }
+    for (const f of [`${it.file}.part`, `${it.file}.part.mp4`, ...Array.from({ length: 4 }, (_, i) => `${it.file}.part.seg${i}`)]) { try { fs.unlinkSync(f); } catch { /* none */ } }
     this._save();
   }
 
-  retry(id) { const it = this.items.find((d) => d.id === id); if (!it) return; it.status = 'queued'; it.error = ''; it.progress = 0; this._save(); this._pump(); }
+  pause(id) {
+    const it = this.items.find((d) => d.id === id); if (!it || !['running', 'queued'].includes(it.status)) return;
+    it.status = 'paused'; it.speed = 0;
+    if (it.option.dash) { it.progress = 0; try { fs.unlinkSync(`${it.file}.part.mp4`); } catch { /* none */ } }
+    else {
+      let partial = 0; try { partial = fs.statSync(`${it.file}.part`).size; } catch { /* segmented download has no resumable file yet */ }
+      it.progress = it.size ? Math.min(0.999, partial / it.size) : 0;
+    }
+    const job = this.jobs.get(id); if (job) job.abort();
+    this._save();
+  }
+
+  retry(id) {
+    const it = this.items.find((d) => d.id === id); if (!it) return;
+    it.status = 'queued'; it.error = '';
+    if (it.option.dash) { it.progress = 0; it.speed = 0; }
+    this._save(); this._pump();
+  }
 
   remove(id, deleteFile) {
     const it = this.items.find((d) => d.id === id); if (!it) return;

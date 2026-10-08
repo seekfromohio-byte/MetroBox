@@ -2,7 +2,7 @@
 
 <img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/bdba3da5-4afc-4812-afcd-bc47bc0afcbc" />
 
-MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Its Material 3 interface uses Google's open-source [Material Web](https://github.com/material-components/material-web) components, with customizable colors, shapes, fonts, card size and subtitle styling.
+MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Its responsive Material 3-inspired interface supports customizable colors, shapes, fonts, card size and subtitle styling.
 
 ## Supported platforms
 
@@ -23,8 +23,6 @@ Download the installer for your system from [Releases](https://github.com/seekfr
 - **Debian / Ubuntu:** `metrobox_amd64.deb` — install with `sudo apt install ./metrobox_amd64.deb`.
 - **Other Linux distributions:** `metrobox_amd64.AppImage` — make it executable, then run it.
 
-Flatpak downloads will be attached to releases built after this packaging change.
-
 The Windows and macOS builds are currently unsigned. Windows may show a SmartScreen warning, and macOS may require you to approve opening the app in Privacy & Security. Signed releases will need a Windows signing certificate and an Apple Developer ID certificate with notarization configured in the release workflow.
 
 The Flatpak runs MetroBox in a sandbox and includes network, graphics, audio, and Videos-folder access. The built-in player works there; host-installed VLC, mpv, and ffmpeg are not automatically available inside the sandbox.
@@ -38,7 +36,7 @@ npm ci
 npm start
 ```
 
-`npm start` builds the browser bundle for `@material/web` before launching MetroBox. The generated bundle and its Apache-2.0 license are included under `renderer/vendor/` so the desktop app can run with its local-file security policy.
+`npm start` launches MetroBox with its local Material 3-inspired interface; it does not require a browser component bundle or network access to load the UI.
 
 Build on the target platform (cross-platform builds should use the matching operating system):
 
@@ -53,13 +51,13 @@ For a Flatpak build, install Flatpak and flatpak-builder, then build the Linux a
 
 ## Release builds
 
-Pushing a version tag such as `v2.0.12` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
+Pushing a version tag such as `v2.0.13` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
 
-After publishing a release, update `latest.json` on `main` so the in-app update checker can link to the right installer for each operating system:
+`latest.json` tracks the newest release for the in-app update checker and includes the installer links for each operating system:
 
 ```json
 {
-  "version": "2.0.12",
+  "version": "2.0.13",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
@@ -74,15 +72,11 @@ After publishing a release, update `latest.json` on `main` so the in-app update 
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "Fixed custom component creation so Material Web buttons, switches, sliders and selects render correctly."
+  "notes": "Restored the v2.0.10 interface and added faster downloads, pause and resume controls, playback diagnostics, and smoother playback handling."
 }
 ```
 ## Discord
 join discord server pretty plz :3 https://discord.gg/ZhSKNj9KfF
-
-## Third-party licenses
-
-MetroBox includes [Material Web](https://github.com/material-components/material-web), Google's Material 3 web component library, under the Apache License 2.0. Its license is shipped in `renderer/vendor/MATERIAL-WEB-LICENSE.txt`.
 
 ## Disclaimer
 

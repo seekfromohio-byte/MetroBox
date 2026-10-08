@@ -1,4 +1,4 @@
-import { h, $, icon, iconBtn, btn, toast, menu, dialog, select, fmtTime, clamp, epLabel } from './util.js';
+import { h, $, icon, iconBtn, btn, toast, menu, dialog, fmtTime, clamp, epLabel } from './util.js';
 import { S, saveSettings, setProgress, getProgress, pushHistory } from './state.js';
 import { A } from './actions.js';
 import { parseSubs, activeCue, subStyle } from './subs.js';
@@ -12,7 +12,7 @@ export function openPlayer(ctx) {
   if (active) active.destroy();
   closeDetail();
   const P = S.settings.player;
-  const st = { ctx: { ...ctx }, sources: [], idx: 0, dash: null, levels: [], level: 'auto', cues: [], caps: [], capIdx: -1, offset: 0, fs: false, idleT: null, nextDismissed: false, nextTimer: null, lastSave: 0, ended: false, dead: false, fill: false, spinT: null };
+  const st = { ctx: { ...ctx }, sources: [], idx: 0, dash: null, levels: [], level: 'auto', cues: [], caps: [], capIdx: -1, offset: 0, fs: false, idleT: null, nextDismissed: false, nextTimer: null, lastSave: 0, lastStats: 0, statsVisible: false, ended: false, dead: false, fill: false, spinT: null };
 
   const video = h('video', { preload: 'auto', playsInline: true });
   const flashIcon = h('div.pl-flash');
@@ -20,13 +20,14 @@ export function openPlayer(ctx) {
   const subsEl = h('div.pl-subs'); const subsSpan = h('span');
   subsEl.append(subsSpan); subsEl.style.bottom = `${P.sub.bottom}%`; Object.assign(subsSpan.style, subStyle(P.sub)); subsSpan.style.display = 'none';
   const msg = h('div.pl-msg', { style: { display: 'none' } });
+  const stats = h('div.pl-stats', { style: { display: 'none' } });
   const title = h('div.pl-title'); const sub = h('div.pl-sub');
   const buf = h('div.pl-buf'); const fill = h('div.pl-fill'); const thumb = h('div.pl-thumb'); const tip = h('div.pl-tip', '0:00');
   const track = h('div.pl-track', buf, fill, thumb); const seek = h('div.pl-seek', track, tip);
   const tCur = h('span.pl-time', '0:00'); const tDur = h('span.pl-time', '0:00');
   const playBtn = iconBtn('pause', 'Pause (Space)', () => toggle(), 'pl-play', true);
   const volBtn = iconBtn('volume_up', 'Mute (M)', () => { video.muted = !video.muted; }, '');
-  const vol = h('md-slider.pl-vol', { min: 0, max: 1, step: 0.01, value: P.muted ? 0 : P.volume, 'aria-label': 'Volume' });
+  const vol = h('input.pl-vol', { type: 'range', min: 0, max: 1, step: 0.01, value: P.muted ? 0 : P.volume });
   const nextBtn = iconBtn('skip_next', 'Next episode (N)', () => goNext(), '');
   const epBtn = iconBtn('format_list_bulleted', 'Episodes', () => drawer(), '');
   const speedBtn = iconBtn('speed', 'Playback speed', () => speedMenu(), '');
@@ -39,7 +40,7 @@ export function openPlayer(ctx) {
   const top = h('div.pl-top', iconBtn('arrow_back', 'Back (Esc)', () => destroy(), 'scrimmed'), h('div', { style: { flex: 1, minWidth: 0 } }, title, sub), moreBtn);
   const bot = h('div.pl-bot', seek, h('div.pl-row', playBtn, iconBtn('replay_10', 'Back 10 seconds (J)', () => skip(-10), ''), iconBtn('forward_10', 'Forward 10 seconds (L)', () => skip(10), ''),
     h('div.pl-volwrap', volBtn, vol), tCur, h('span.pl-time', { style: { opacity: 0.5, margin: 0 } }, '/'), tDur, h('div.pl-grow'), nextBtn, epBtn, speedBtn, subBtn, qBtn, aspBtn, pipBtn, fsBtn));
-  const root = h('div.player', { tabindex: -1 }, video, subsEl, h('div.pl-center', flashIcon, spinner), top, bot, msg);
+  const root = h('div.player', { tabindex: -1 }, video, subsEl, h('div.pl-center', flashIcon, spinner), top, bot, msg, stats);
   $('#player-layer').append(root);
 
   // ---------- helpers
@@ -226,6 +227,7 @@ export function openPlayer(ctx) {
   function moreMenu() {
     const { item, se, ep, pid } = st.ctx;
     menu(moreBtn, [{ label: 'Play in VLC', icon: 'open_in_new', onClick: () => externalHere('vlc') }, { label: 'Play in mpv', icon: 'open_in_new', onClick: () => externalHere('mpv') }, { divider: true },
+      { label: 'Playback diagnostics', icon: 'info', checked: st.statsVisible, onClick: () => { st.statsVisible = !st.statsVisible; stats.style.display = st.statsVisible ? '' : 'none'; } },
       { label: 'Download this', icon: 'download', onClick: () => downloadEpisode(item, se, ep, pid) }, { label: 'Keyboard shortcuts', icon: 'keyboard', onClick: showShortcuts }], { align: 'right' });
   }
   function drawer() {
@@ -239,12 +241,12 @@ export function openPlayer(ctx) {
         list.append(h('button.ep.sl' + (cur ? '.done' : ''), { onclick: () => { dr.remove(); switchTo(season, n); } }, h('div.num', cur ? icon('play_arrow', true) : String(n)), h('div.meta', h('div.t-title-m', `Episode ${n}`))));
       });
     };
-    const sel = select(d.seasons.map((s) => [s.number, `Season ${s.number}`]), season, (v) => { season = +v; fillList(); });
+    const sel = h('select.select', { onchange: () => { season = +sel.value; fillList(); } }, d.seasons.map((s) => h('option', { value: s.number, selected: s.number === season }, `Season ${s.number}`)));
     const dr = h('div.pl-drawer', h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, h('div.t-title-l', { style: { flex: 1 } }, 'Episodes'), iconBtn('close', 'Close', () => dr.remove(), 'sm')), d.seasons.length > 1 ? sel : null, list);
     fillList(); root.append(dr);
   }
   function showShortcuts() {
-    const rows = [['Space / K', 'Play / pause'], ['← / → ', 'Seek 10s'], ['J / L', 'Seek 10s back / forward'], ['↑ / ↓', 'Volume'], ['M', 'Mute'], ['F', 'Fullscreen'], ['C', 'Toggle subtitles'], ['[ / ]', 'Subtitle delay'], ['< / >', 'Speed'], ['N', 'Next episode'], ['A', 'Fit / fill'], ['0–9', 'Jump to 0–90%'], ['Esc', 'Leave fullscreen / close']];
+    const rows = [['Space / K', 'Play / pause'], ['← / → ', 'Seek 10s'], ['J / L', 'Seek 10s back / forward'], ['↑ / ↓', 'Volume'], ['M', 'Mute'], ['F', 'Fullscreen'], ['C', 'Toggle subtitles'], ['I', 'Playback diagnostics'], ['[ / ]', 'Subtitle delay'], ['< / >', 'Speed'], ['N', 'Next episode'], ['A', 'Fit / fill'], ['0–9', 'Jump to 0–90%'], ['Esc', 'Leave fullscreen / close']];
     dialog({ title: 'Keyboard shortcuts', body: h('div.shortcuts', rows.flatMap(([k, v]) => [h('span.kbd', k), h('span', v)])), actions: [{ label: 'Close', kind: 'text' }] });
   }
 
@@ -312,6 +314,7 @@ export function openPlayer(ctx) {
     else if (k === '[') { st.offset -= 0.1; toast(`Subtitle delay ${st.offset.toFixed(1)}s`, { ms: 900 }); } else if (k === ']') { st.offset += 0.1; toast(`Subtitle delay ${st.offset.toFixed(1)}s`, { ms: 900 }); }
     else if (k === '<' || k === ',') { video.playbackRate = Math.max(0.25, video.playbackRate - 0.25); toast(`Speed ${video.playbackRate}×`, { ms: 900 }); } else if (k === '>' || k === '.') { video.playbackRate = Math.min(3, video.playbackRate + 0.25); toast(`Speed ${video.playbackRate}×`, { ms: 900 }); }
     else if (k === 'n' || k === 'N') goNext();
+    else if (k === 'i' || k === 'I') { st.statsVisible = !st.statsVisible; stats.style.display = st.statsVisible ? '' : 'none'; }
     else if (k === 'a' || k === 'A') aspBtn.click(); else if (k === 'p' || k === 'P') pip();
     else if (/^[0-9]$/.test(k)) { if (d()) { if (st.trans) seekTrans(d() * (+k / 10)); else video.currentTime = d() * (+k / 10); } }
     else if (k === 'Escape') { if ($('.pl-drawer', root)) $('.pl-drawer', root).remove(); else if (document.querySelector('.menu')) { /* menu handles it */ } else if (st.fs) setFs(false); else destroy(); }
@@ -325,22 +328,38 @@ export function openPlayer(ctx) {
     const d = st.trans ? 3600 : (isFinite(video.duration) && video.duration > 0 ? video.duration : 0); const c = video.currentTime;
     const ct = st.trans ? c + (st.transBase || 0) : c;
     if (isFinite(d) && d > 0) {
-      fill.style.width = `${(c / d) * 100}%`; thumb.style.left = `${(c / d) * 100}%`;
+      const played = `${(c / d) * 100}%`;
+      if (fill.style.width !== played) fill.style.width = played;
+      if (thumb.style.left !== played) thumb.style.left = played;
       let b = 0; for (let i = 0; i < video.buffered.length; i++) if (video.buffered.start(i) <= c + 0.5) b = Math.max(b, video.buffered.end(i));
-      buf.style.width = `${(b / d) * 100}%`; tDur.textContent = fmtTime(d);
+      const buffered = `${(b / d) * 100}%`;
+      if (buf.style.width !== buffered) buf.style.width = buffered;
+      const durationLabel = fmtTime(d);
+      if (tDur.textContent !== durationLabel) tDur.textContent = durationLabel;
       if (!video.paused && !st.trans) saveProg(false);
       if (!st.ended && !st.trans && nextEp() && d > 120 && d - c < 25 && !st.nextDismissed) showUpNext(0);
     }
-    tCur.textContent = fmtTime(ct);
+    const currentLabel = fmtTime(ct);
+    if (tCur.textContent !== currentLabel) tCur.textContent = currentLabel;
     // Watchdog: time is advancing (audio) but no picture is ever produced -> unsupported video codec (usually HEVC).
     if (!st.decodeOk && !st.fallingBack && !video.paused && video.readyState >= 2 && c > 1.5) {
       const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : { totalVideoFrames: 1 };
       if (video.videoWidth > 0 && q.totalVideoFrames > 0) st.decodeOk = true;
       else { st.blankSince = st.blankSince || Date.now(); if (Date.now() - st.blankSince > 2500) { st.decodeOk = true; noPicture(); } }
     }
-    if (st.cues.length) { const t = activeCue(st.cues, c - st.offset); if (t) { if (subsSpan.dataset.t !== t) { subsSpan.dataset.t = t; subsSpan.innerHTML = t.replace(/\n/g, '<br>'); } subsSpan.style.display = ''; } else { subsSpan.style.display = 'none'; subsSpan.dataset.t = ''; } }
+    if (st.cues.length) {
+      const t = activeCue(st.cues, c - st.offset);
+      if (t) { if (subsSpan.dataset.t !== t) { subsSpan.dataset.t = t; subsSpan.innerHTML = t.replace(/\n/g, '<br>'); } if (subsSpan.style.display !== '') subsSpan.style.display = ''; }
+      else if (subsSpan.style.display !== 'none') { subsSpan.style.display = 'none'; subsSpan.dataset.t = ''; }
+    }
+    if (st.statsVisible && Date.now() - st.lastStats >= 1000) {
+      st.lastStats = Date.now();
+      const q = video.getVideoPlaybackQuality?.(); const width = video.videoWidth; const height = video.videoHeight;
+      let ahead = 0; for (let i = 0; i < video.buffered.length; i++) if (video.buffered.start(i) <= c + 0.5) ahead = Math.max(ahead, video.buffered.end(i) - c);
+      stats.textContent = `${width && height ? `${width}×${height}` : 'Waiting for video'}  ·  ${q ? `${q.droppedVideoFrames} dropped / ${q.totalVideoFrames} frames` : 'Frame stats unavailable'}  ·  ${Math.max(0, ahead).toFixed(1)}s buffered`;
+    }
   }
-  const ticker = setInterval(tick, 150);
+  const ticker = setInterval(tick, 250);
 
   function destroy() {
     if (st.dead) return; st.dead = true;

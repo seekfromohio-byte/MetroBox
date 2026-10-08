@@ -70,7 +70,12 @@ class StreamProxy {
     let started = false;
     child.stdout.on('data', (chunk) => {
       if (!started) { started = true; if (process.env.MB_DEBUG_UPDATES) console.log('[tc] first bytes out'); res.writeHead(200, { ...cors, 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' }); }
-      res.write(chunk);
+      // Respect downstream backpressure so a slow decoder or renderer cannot make ffmpeg
+      // fill an unbounded response buffer and compete with video playback for memory.
+      if (!res.write(chunk)) {
+        child.stdout.pause();
+        res.once('drain', () => { if (!res.destroyed) child.stdout.resume(); });
+      }
     });
     child.on('error', (e) => { if (!res.headersSent) { res.writeHead(500, cors); res.end(); } else res.end(); });
     child.on('exit', (code) => {

@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('mb', {
   detectPlayers: () => call('player:detect'),
   openExternal: (p) => call('player:open', p),
   dl: {
-    list: () => call('dl:list'), add: (p) => call('dl:add', p), cancel: (id) => call('dl:cancel', id),
+    list: () => call('dl:list'), add: (p) => call('dl:add', p), pause: (id) => call('dl:pause', id), cancel: (id) => call('dl:cancel', id),
     retry: (id) => call('dl:retry', id), remove: (id, del) => call('dl:remove', id, del),
     openFolder: () => call('dl:open-folder'), playFile: (f) => call('dl:play-file', f),
     onChange: (cb) => on('dl:change', cb),

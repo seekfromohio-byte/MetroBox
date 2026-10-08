@@ -7,12 +7,13 @@ export function mountDownloads(page) {
   const draw = () => {
     list.replaceChildren(...(items.length ? items.map(card) : [emptyState('download', 'No downloads yet', 'Use the download button on a movie or episode. DASH downloads require ffmpeg, which you can install separately and add to PATH.')]));
   };
-  const statusText = (d) => ({ queued: 'Queued', running: d.speedUnit === 'x' ? `Downloading · ${d.speed ? `${d.speed.toFixed(1)}× speed` : '…'}` : `Downloading · ${d.speed ? `${fmtBytes(d.speed)}/s` : '…'}`, done: 'Finished', error: `Failed: ${d.error}`, canceled: 'Canceled', paused: 'Paused (app closed)' }[d.status] || d.status);
+  const statusText = (d) => ({ queued: 'Queued', running: d.speedUnit === 'x' ? `Downloading · ${d.speed ? `${d.speed.toFixed(1)}× speed` : '…'}` : `Downloading · ${d.speed ? `${fmtBytes(d.speed)}/s` : '…'}`, done: 'Finished', error: `Failed: ${d.error}`, canceled: 'Canceled', paused: 'Paused' }[d.status] || d.status);
   function card(d) {
     const acts = [];
     if (d.status === 'done') acts.push(iconBtn('play_arrow', 'Play file', () => window.mb.dl.playFile(d.file), 'filled'));
-    if (['running', 'queued'].includes(d.status)) acts.push(iconBtn('cancel', 'Cancel', () => window.mb.dl.cancel(d.id)));
-    if (['error', 'canceled', 'paused'].includes(d.status)) acts.push(iconBtn('refresh', 'Retry', () => window.mb.dl.retry(d.id)));
+    if (['running', 'queued'].includes(d.status)) acts.push(iconBtn('pause', 'Pause download', () => window.mb.dl.pause(d.id)), iconBtn('cancel', 'Cancel and delete partial download', () => window.mb.dl.cancel(d.id)));
+    if (d.status === 'paused') acts.push(iconBtn('play_arrow', 'Resume download', () => window.mb.dl.retry(d.id), 'filled'));
+    if (['error', 'canceled'].includes(d.status)) acts.push(iconBtn('refresh', 'Retry download', () => window.mb.dl.retry(d.id)));
     acts.push(iconBtn('delete', 'Remove', async () => { const del = d.status === 'done' ? await confirmDialog('Remove download?', 'The list entry will be removed. Delete the file from disk too?', 'Delete file too') : false; window.mb.dl.remove(d.id, del === true); }));
     return h('div.dl', img(d.poster, d.title), h('div.meta', h('div.t-title-m', d.title), h('div.t-label.t-muted', statusText(d)),
       d.status === 'running' || d.status === 'queued' ? h('div.lin' + (d.progress ? '' : '.indet'), h('i', { style: d.progress ? { width: `${Math.round(d.progress * 100)}%` } : {} })) : null), acts);

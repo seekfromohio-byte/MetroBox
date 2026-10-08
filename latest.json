@@ -1,5 +1,5 @@
 {
-  "version": "2.0.12",
+  "version": "2.0.13",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
@@ -14,5 +14,5 @@
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "Fixed Material Web custom tag creation so buttons, switches, sliders, selects, chips, tabs, menus, and dialogs render and work correctly."
+  "notes": "Restored the v2.0.10 interface and added faster downloads, pause and resume controls, playback diagnostics, and smoother playback handling."
 }

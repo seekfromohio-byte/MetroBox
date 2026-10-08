@@ -145,6 +145,7 @@ app.whenReady().then(async () => {
   ok('player:open', ({ engine, option, title, subtitleText, startAt }) => players.openExternal({ engine, url: proxy.urlFor(option.url, option.headers), title, subtitleText, startAt, settings: settings().player || {} }).then((r) => { if (!r.ok) throw new Error(r.error); return true; }));
   ok('dl:list', () => downloads.list());
   ok('dl:add', (p) => { const r = downloads.add(p); if (!r.ok) throw new Error(r.error); return r; });
+  ok('dl:pause', (id) => downloads.pause(id));
   ok('dl:cancel', (id) => downloads.cancel(id));
   ok('dl:retry', (id) => downloads.retry(id));
   ok('dl:remove', (id, del) => downloads.remove(id, del));

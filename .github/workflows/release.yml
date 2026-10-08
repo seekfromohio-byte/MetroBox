@@ -76,13 +76,10 @@ jobs:
           body: |
             ## What's changed
 
-            - Fixed custom element creation for Google's Material Web components, so Material 3 buttons, switches, sliders, selects, chips, tabs, menus, and dialogs now render and work correctly.
-
-            ## Available downloads
-
-            - Windows x64 and ARM64 installer (`MetroBox-Setup.exe`).
-            - Universal macOS app for Intel and Apple silicon (`MetroBox.dmg` and `MetroBox.zip`).
-            - Linux Debian package, AppImage, and Flatpak bundle (`MetroBox.flatpak`).
+            - Restored the responsive MetroBox Material 3 interface from v2.0.10 and removed the glitchy Material Web component layer.
+            - Faster large MP4 downloads where servers support parallel range requests, plus pause and resume controls.
+            - Playback diagnostics, lighter player UI updates, and improved ffmpeg stream backpressure handling.
+            - Windows x64/ARM64, universal macOS, Debian, AppImage, and Flatpak packages.
 
             ## Install notes
 
