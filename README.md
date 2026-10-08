@@ -9,6 +9,7 @@ MetroBox is an unofficial community-made desktop client built on the [MovieBox-T
 - **Windows:** x64 and ARM64
 - **macOS:** Intel and Apple silicon (universal app)
 - **Linux:** x64 Flatpak bundle, Debian/Ubuntu package, and AppImage
+- **Android and Ios:** COMING SOON!
 
 Video codec and hardware-decoding support depends on the device, operating system and graphics hardware. VLC or mpv can be used for external playback. Install ffmpeg separately for DASH downloads and software transcoding; MetroBox detects it from `PATH`, or you can set its full path in Settings.
 
