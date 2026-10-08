@@ -11,14 +11,14 @@ export function mountSearch(page, initial = '') {
   page.append(title, filter, body, more);
 
   function chips() {
-    filter.replaceChildren(...[['all', 'All'], ['movie', 'Movies'], ['series', 'Series']].map(([v, l]) => h('button.chip.sl' + (v === type ? '.sel' : ''), { onclick: () => { type = v; draw(); chips(); } }, v === type ? icon('check') : null, l)));
+    filter.replaceChildren(...[['all', 'All'], ['movie', 'Movies'], ['series', 'Series']].map(([v, l]) => h('md-filter-chip.chip.sl', { selected: v === type, onclick: () => { type = v; draw(); chips(); } }, l)));
     filter.style.display = q ? '' : 'none';
   }
   async function idle() {
     body.replaceChildren(); more.replaceChildren(); title.textContent = 'Search';
     const rec = S.settings.recent;
     if (rec.length) body.append(h('div', { style: { marginBottom: '28px' } }, h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' } }, h('h2.t-title-l', { style: { flex: 1 } }, 'Recent searches'), btn('Clear', 'text', () => { S.settings.recent = []; saveSettings('recent'); idle(); })),
-      h('div.chips', rec.map((r) => h('button.chip.sl', { onclick: () => window.dispatchEvent(new CustomEvent('mb-search', { detail: r })) }, icon('history'), r)))));
+      h('div.chips', rec.map((r) => { const chip = h('md-suggestion-chip.chip.sl', { onclick: () => window.dispatchEvent(new CustomEvent('mb-search', { detail: r })) }, icon('history'), r); chip.firstElementChild.slot = 'icon'; return chip; }))));
     body.append(h('h2.t-title-l', { style: { marginBottom: '16px' } }, 'Popular right now'), skeletonGrid(12));
     try { const d = await getHome(1); if (dead || q) return; const all = [...d.hero, ...d.rows.flatMap((r) => r.items)]; const u = [...new Map(all.map((i) => [i.id, i])).values()].slice(0, 24);
       body.lastChild.replaceWith(h('div.grid', u.map((i) => posterCard(i)))); } catch { if (!dead && !q) body.lastChild.replaceWith(h('div.t-muted', 'Type a title in the search bar above.')); }

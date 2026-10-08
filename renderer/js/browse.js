@@ -19,7 +19,7 @@ export function mountBrowse(page, kind) {
     let list = [...items.values()].filter((i) => !!i.series === wantSeries);
     const genres = {}; list.forEach((i) => (i.genres || []).forEach((g) => { genres[g] = (genres[g] || 0) + 1; }));
     const top = Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 12).map((x) => x[0]);
-    chips.replaceChildren(...['All', ...top].map((g) => h('button.chip.sl' + (g === genre ? '.sel' : ''), { onclick: () => { genre = g; render(); } }, g === genre ? icon('check') : null, g)));
+    chips.replaceChildren(...['All', ...top].map((g) => h('md-filter-chip.chip.sl', { selected: g === genre, onclick: () => { genre = g; render(); } }, g)));
     if (genre !== 'All') list = list.filter((i) => (i.genres || []).includes(genre));
     if (sort === 'rating') list.sort((a, b) => (+b.rating || 0) - (+a.rating || 0)); else if (sort === 'year') list.sort((a, b) => (+b.year || 0) - (+a.year || 0)); else if (sort === 'title') list.sort((a, b) => a.title.localeCompare(b.title));
     grid.replaceChildren(list.length ? h('div.grid', list.map((i) => posterCard(i))) : (loading ? skeletonGrid() : emptyState('movie', 'Nothing here yet', 'Load more to discover titles.')));

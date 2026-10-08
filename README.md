@@ -2,7 +2,7 @@
 
 <img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/bdba3da5-4afc-4812-afcd-bc47bc0afcbc" />
 
-MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Customize Material 3 colors, shapes, fonts, card size and subtitle styling.
+MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Its Material 3 interface uses Google's open-source [Material Web](https://github.com/material-components/material-web) components, with customizable colors, shapes, fonts, card size and subtitle styling.
 
 ## Supported platforms
 
@@ -38,6 +38,8 @@ npm ci
 npm start
 ```
 
+`npm start` builds the browser bundle for `@material/web` before launching MetroBox. The generated bundle and its Apache-2.0 license are included under `renderer/vendor/` so the desktop app can run with its local-file security policy.
+
 Build on the target platform (cross-platform builds should use the matching operating system):
 
 ```sh
@@ -51,13 +53,13 @@ For a Flatpak build, install Flatpak and flatpak-builder, then build the Linux a
 
 ## Release builds
 
-Pushing a version tag such as `v2.0.10` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
+Pushing a version tag such as `v2.0.11` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
 
 After publishing a release, update `latest.json` on `main` so the in-app update checker can link to the right installer for each operating system:
 
 ```json
 {
-  "version": "2.0.10",
+  "version": "2.0.11",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
@@ -72,11 +74,15 @@ After publishing a release, update `latest.json` on `main` so the in-app update 
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "What's new in the latest release..."
+  "notes": "Material 3 components from Google's Material Web are now used throughout MetroBox."
 }
 ```
 ## Discord
 join discord server pretty plz :3 https://discord.gg/ZhSKNj9KfF
+
+## Third-party licenses
+
+MetroBox includes [Material Web](https://github.com/material-components/material-web), Google's Material 3 web component library, under the Apache License 2.0. Its license is shipped in `renderer/vendor/MATERIAL-WEB-LICENSE.txt`.
 
 ## Disclaimer
 

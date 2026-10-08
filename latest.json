@@ -1,5 +1,5 @@
 {
-  "version": "2.0.10",
+  "version": "2.0.11",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
@@ -14,5 +14,5 @@
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "MetroBox 2.0.10 adds a Flatpak package for Linux. Windows x64 and ARM64 installers, a universal macOS app, and Linux DEB and AppImage packages are also available. The Flatpak uses the built-in player inside its sandbox."
+  "notes": "MetroBox 2.0.11 adopts Google's Material Web components for its Material 3 controls, dialogs, menus, tabs, and typography. Theme colors, shapes, and fonts now feed the official Material 3 design tokens."
 }

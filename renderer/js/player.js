@@ -1,4 +1,4 @@
-import { h, $, icon, iconBtn, btn, toast, menu, dialog, fmtTime, clamp, epLabel } from './util.js';
+import { h, $, icon, iconBtn, btn, toast, menu, dialog, select, fmtTime, clamp, epLabel } from './util.js';
 import { S, saveSettings, setProgress, getProgress, pushHistory } from './state.js';
 import { A } from './actions.js';
 import { parseSubs, activeCue, subStyle } from './subs.js';
@@ -26,7 +26,7 @@ export function openPlayer(ctx) {
   const tCur = h('span.pl-time', '0:00'); const tDur = h('span.pl-time', '0:00');
   const playBtn = iconBtn('pause', 'Pause (Space)', () => toggle(), 'pl-play', true);
   const volBtn = iconBtn('volume_up', 'Mute (M)', () => { video.muted = !video.muted; }, '');
-  const vol = h('input.pl-vol', { type: 'range', min: 0, max: 1, step: 0.01, value: P.muted ? 0 : P.volume });
+  const vol = h('md-slider.pl-vol', { min: 0, max: 1, step: 0.01, value: P.muted ? 0 : P.volume, 'aria-label': 'Volume' });
   const nextBtn = iconBtn('skip_next', 'Next episode (N)', () => goNext(), '');
   const epBtn = iconBtn('format_list_bulleted', 'Episodes', () => drawer(), '');
   const speedBtn = iconBtn('speed', 'Playback speed', () => speedMenu(), '');
@@ -239,7 +239,7 @@ export function openPlayer(ctx) {
         list.append(h('button.ep.sl' + (cur ? '.done' : ''), { onclick: () => { dr.remove(); switchTo(season, n); } }, h('div.num', cur ? icon('play_arrow', true) : String(n)), h('div.meta', h('div.t-title-m', `Episode ${n}`))));
       });
     };
-    const sel = h('select.select', { onchange: () => { season = +sel.value; fillList(); } }, d.seasons.map((s) => h('option', { value: s.number, selected: s.number === season }, `Season ${s.number}`)));
+    const sel = select(d.seasons.map((s) => [s.number, `Season ${s.number}`]), season, (v) => { season = +v; fillList(); });
     const dr = h('div.pl-drawer', h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, h('div.t-title-l', { style: { flex: 1 } }, 'Episodes'), iconBtn('close', 'Close', () => dr.remove(), 'sm')), d.seasons.length > 1 ? sel : null, list);
     fillList(); root.append(dr);
   }

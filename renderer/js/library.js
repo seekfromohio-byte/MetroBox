@@ -5,12 +5,12 @@ import { posterCard, emptyState } from './components.js';
 const ago = (t) => { const s = (Date.now() - t) / 1000; if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m ago`; if (s < 86400) return `${Math.round(s / 3600)}h ago`; if (s < 86400 * 30) return `${Math.round(s / 86400)}d ago`; return new Date(t).toLocaleDateString(); };
 
 export function mountLibrary(page, start = 'list') {
-  let tab = start; const body = h('div'); const tabs = h('div.tabs'); const bar = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '8px' } }, h('h1.t-headline.page-title', { style: { flex: 1, margin: 0 } }, 'Library'));
+  let tab = start; const body = h('div'); const tabs = h('md-tabs.tabs', { 'aria-label': 'Library sections' }); const bar = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '8px' } }, h('h1.t-headline.page-title', { style: { flex: 1, margin: 0 } }, 'Library'));
   page.append(bar, tabs, body);
   const offs = [on('list', draw), on('progress', draw), on('history', draw)];
   function draw() {
     const p = profile();
-    tabs.replaceChildren(...[['list', 'My List', p.mylist.length], ['continue', 'Continue watching', continueWatching().length], ['history', 'History', p.history.length]].map(([k, l, n]) => h('button.tab.sl' + (k === tab ? '.sel' : ''), { onclick: () => { tab = k; draw(); } }, `${l}${n ? ` (${n})` : ''}`)));
+    tabs.replaceChildren(...[['list', 'My List', p.mylist.length], ['continue', 'Continue watching', continueWatching().length], ['history', 'History', p.history.length]].map(([k, l, n]) => h('md-primary-tab.tab', { selected: k === tab, onclick: () => { tab = k; draw(); } }, `${l}${n ? ` (${n})` : ''}`)));
     bar.querySelector('.btn')?.remove();
     if (tab === 'history' && p.history.length) bar.append(btn('Clear history', 'text', async () => { if (await confirmDialog('Clear history?', 'This removes the list of titles you’ve watched on this profile.', 'Clear', true)) { p.history = []; saveData('history'); } }, 'delete'));
     if (tab === 'list') {

@@ -45,7 +45,7 @@ export function mountSettings(page, { rerender }) {
   const players = h('span.status', h('i'), 'Checking…'); const status = h('div', { style: { display: 'flex', gap: '16px', flexWrap: 'wrap' } });
   const detect = async () => { try { const d = await window.mb.detectPlayers(); status.replaceChildren(...[['VLC', d.vlc], ['mpv', d.mpv], ['ffmpeg', d.ffmpeg]].map(([n, p]) => h('span.status' + (p ? '.ok' : '.bad'), { title: p || 'not found' }, h('i'), `${n}: ${p ? 'found' : 'not found'}`))); } catch { /* ignore */ } };
   detect();
-  const pathInput = (key) => h('label.field', { style: { width: '260px' } }, h('input', { type: 'text', value: P[key], placeholder: 'Optional full executable path', 'aria-label': `${key.replace('Path', '')} executable path`, onchange: (e) => { P[key] = e.target.value.trim(); saveSettings('player'); detect(); } }));
+  const pathInput = (key) => h('label.field', { style: { width: '260px' } }, h('md-outlined-text-field', { type: 'text', value: P[key], placeholder: 'Optional full executable path', 'aria-label': `${key.replace('Path', '')} executable path`, onchange: (e) => { P[key] = e.target.value.trim(); saveSettings('player'); detect(); } }));
 
   const profList = h('div');
   const drawProf = () => profList.replaceChildren(...S.data.list.map((p) => h('div.srow', avatar(p, 40), h('div.lbl', p.name, h('small', `${p.mylist.length} in list · ${p.history.length} watched`)), iconBtn('edit', 'Edit profile', () => editProfile(p, false, () => { drawProf(); }))))
@@ -84,7 +84,7 @@ export function mountSettings(page, { rerender }) {
       srow('Default speed', null, select([[0.75, '0.75×'], [1, 'Normal'], [1.25, '1.25×'], [1.5, '1.5×']], P.speed, (v) => { P.speed = +v; saveSettings('player'); }))),
     group('Subtitles',
       srow('Pick a subtitle automatically', null, switchCtl(P.subAuto, (v) => { P.subAuto = v; saveSettings('player'); }, 'Auto subtitles')),
-      srow('Preferred language', 'Matches the language name in the subtitle list.', h('label.field', { style: { width: '200px' } }, h('input', { type: 'text', value: P.subLang, placeholder: 'English', 'aria-label': 'Preferred subtitle language', onchange: (e) => { P.subLang = e.target.value.trim(); saveSettings('player'); } }))),
+      srow('Preferred language', 'Matches the language name in the subtitle list.', h('label.field', { style: { width: '200px' } }, h('md-outlined-text-field', { type: 'text', value: P.subLang, placeholder: 'English', 'aria-label': 'Preferred subtitle language', onchange: (e) => { P.subLang = e.target.value.trim(); saveSettings('player'); } }))),
       preview, srow('Text size', null, szR, szV), srow('Text color', null, subColors), srow('Background opacity', null, bgR, bgV),
       srow('Outline', null, select([['none', 'None'], ['shadow', 'Shadow'], ['outline', 'Outline']], sub.edge, (v) => sp('edge', v))),
       srow('Font', null, select([['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Mono']], sub.font, (v) => sp('font', v))),

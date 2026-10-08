@@ -25,7 +25,7 @@ function build() {
   const root = $('#app'); root.replaceChildren();
   rail = h('nav.rail', { 'aria-label': 'Main' }, h('div.logo', { title: 'MetroBox · Made by JayJoice' }, h('img', { src: 'img/logo-mark.png', alt: '', draggable: false })),
     ...NAV.map(([k, l, ic]) => navItem(k, l, ic)), h('div.spacer'), navItem('settings', 'Settings', 'settings'));
-  searchInput = h('input', { type: 'search', placeholder: 'Search movies and series', 'aria-label': 'Search', spellcheck: false,
+  searchInput = h('md-outlined-text-field.search-input', { type: 'search', placeholder: 'Search movies and series', 'aria-label': 'Search', spellcheck: false,
     oninput: debounce(() => doSearch(false), 450), onkeydown: (e) => { if (e.key === 'Enter') doSearch(true); if (e.key === 'Escape') { searchInput.value = ''; searchInput.blur(); doSearch(true); } } });
   const bar = h('label.searchbar', icon('search'), searchInput, h('span.kbd', '/'));
   profBtn = h('button.icon-btn.sl', { title: 'Profiles', 'aria-label': 'Profiles', style: { width: '44px', height: '44px' }, onclick: () => profileMenu() });
@@ -85,7 +85,7 @@ async function boot() {
   window.addEventListener('mb-shortcuts', shortcuts);
   window.addEventListener('offline', () => toast('You’re offline.')); window.addEventListener('online', () => toast('Back online.'));
   document.addEventListener('keydown', (e) => {
-    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+    const typing = e.target.matches?.('input, textarea, select, md-outlined-text-field, md-outlined-select');
     if (((e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && e.ctrlKey)) && !$('.player')) { e.preventDefault(); searchInput.focus(); searchInput.select(); }
     else if (e.key === '?' && !typing && !$('.player')) shortcuts();
   });

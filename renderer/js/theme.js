@@ -90,10 +90,30 @@ export function applyTheme(t) {
   const scheme = buildScheme(t.seed, dark, dark && t.amoled);
   const root = document.documentElement;
   for (const [k, v] of Object.entries(scheme)) root.style.setProperty(`--${k}`, v);
+  const materialRoles = {
+    primary: 'primary', 'on-primary': 'on-primary', 'primary-container': 'primary-container', 'on-primary-container': 'on-primary-container',
+    secondary: 'secondary', 'on-secondary': 'on-secondary', 'secondary-container': 'secondary-container', 'on-secondary-container': 'on-secondary-container',
+    tertiary: 'tertiary', 'on-tertiary': 'on-tertiary', 'tertiary-container': 'tertiary-container', 'on-tertiary-container': 'on-tertiary-container',
+    error: 'error', 'on-error': 'on-error', 'error-container': 'error-container', 'on-error-container': 'on-error-container',
+    surface: 'surface', 'on-surface': 'on-surface', 'surface-variant': 'surface-variant', 'on-surface-variant': 'on-surface-variant',
+    outline: 'outline', 'outline-variant': 'outline-variant', 'inverse-surface': 'inverse-surface', 'inverse-on-surface': 'inverse-on-surface', 'inverse-primary': 'inverse-primary',
+    'surface-container-lowest': 'sc-lowest', 'surface-container-low': 'sc-low', 'surface-container': 'sc', 'surface-container-high': 'sc-high', 'surface-container-highest': 'sc-highest',
+  };
+  for (const [material, local] of Object.entries(materialRoles)) root.style.setProperty(`--md-sys-color-${material}`, scheme[local]);
+  root.style.setProperty('--md-sys-color-scrim', '#000000');
   root.style.setProperty('color-scheme', dark ? 'dark' : 'light');
+  const shape = { sharp: 4, standard: 8, round: 16 }[t.shape] ?? 8;
   root.style.setProperty('--shape', String({ sharp: 0.35, standard: 1, round: 1.5 }[t.shape] ?? 1));
+  root.style.setProperty('--md-sys-shape-corner-extra-small', `${Math.max(0, shape - 4)}px`);
+  root.style.setProperty('--md-sys-shape-corner-small', `${shape}px`);
+  root.style.setProperty('--md-sys-shape-corner-medium', `${shape + 4}px`);
+  root.style.setProperty('--md-sys-shape-corner-large', `${shape + 8}px`);
+  root.style.setProperty('--md-sys-shape-corner-extra-large', `${shape + 20}px`);
+  root.style.setProperty('--md-sys-shape-corner-full', '9999px');
   root.style.setProperty('--card-w', `${t.cardSize}px`);
   root.style.setProperty('--font', FONTS[t.font] || FONTS.roboto);
+  root.style.setProperty('--md-ref-typeface-plain', FONTS[t.font] || FONTS.roboto);
+  root.style.setProperty('--md-ref-typeface-brand', FONTS[t.font] || FONTS.roboto);
   root.classList.toggle('reduce-motion', !!t.reduceMotion);
   root.classList.toggle('lg', !!t.glass);
   return scheme;

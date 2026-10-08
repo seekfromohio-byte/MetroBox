@@ -7,12 +7,12 @@ export function avatar(p, size = 40) {
 
 export function editProfile(p, isNew, done) {
   const draft = { name: p.name, emoji: p.emoji, color: p.color };
-  const name = h('input', { type: 'text', value: draft.name, maxLength: 20, placeholder: 'Name', 'aria-label': 'Profile name' });
+  const name = h('md-outlined-text-field', { type: 'text', value: draft.name, maxLength: 20, placeholder: 'Name', 'aria-label': 'Profile name' });
   const preview = h('div', { style: { display: 'flex', justifyContent: 'center' } });
   const emo = h('div.chips'); const col = h('div.swatches', { style: { justifyContent: 'flex-start' } });
   const redraw = () => {
     preview.replaceChildren(avatar({ ...draft, name: name.value }, 88));
-    emo.replaceChildren(...AVATAR.EMOJIS.map((e) => h('button.chip.sl' + (e === draft.emoji ? '.sel' : ''), { style: { fontSize: '20px', padding: '0 10px' }, onclick: () => { draft.emoji = e; redraw(); } }, e)));
+    emo.replaceChildren(...AVATAR.EMOJIS.map((e) => h('md-filter-chip.chip.sl', { selected: e === draft.emoji, style: { '--md-filter-chip-label-text-size': '20px' }, onclick: () => { draft.emoji = e; redraw(); } }, e)));
     col.replaceChildren(...AVATAR.COLORS.map((c) => h('button.swatch' + (c === draft.color ? '.sel' : ''), { style: { background: c }, 'aria-label': c, onclick: () => { draft.color = c; redraw(); } })));
   };
   redraw();

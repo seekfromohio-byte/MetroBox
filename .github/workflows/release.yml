@@ -76,10 +76,13 @@ jobs:
           body: |
             ## What's changed
 
-            - Windows support: an NSIS installer for x64 and ARM64 (`MetroBox-Setup.exe`).
-            - macOS support: a universal app for Intel and Apple silicon (`MetroBox.dmg` and `MetroBox.zip`).
-            - Linux packages: Debian package, AppImage, and Flatpak bundle (`MetroBox.flatpak`).
-            - Player and ffmpeg detection, download locations, and update downloads now follow the host platform.
+            - The interface now uses Google's open-source Material Web components and Material 3 design tokens for controls, menus, dialogs, tabs, typography, and dynamic theme colors.
+
+            ## Available downloads
+
+            - Windows x64 and ARM64 installer (`MetroBox-Setup.exe`).
+            - Universal macOS app for Intel and Apple silicon (`MetroBox.dmg` and `MetroBox.zip`).
+            - Linux Debian package, AppImage, and Flatpak bundle (`MetroBox.flatpak`).
 
             ## Install notes
 

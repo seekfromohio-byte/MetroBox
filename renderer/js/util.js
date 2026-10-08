@@ -11,13 +11,15 @@ export function h(spec, props, ...kids) {
   if (props !== undefined && (props === null || typeof props !== 'object' || props instanceof Node || Array.isArray(props))) { kids.unshift(props); props = null; }
   const m = /^([a-z0-9]*)((?:[.#][\w-]+)*)$/i.exec(spec) || [null, 'div', ''];
   const el = document.createElement(m[1] || 'div');
-  for (const part of m[2].match(/[.#][\w-]+/g) || []) { if (part[0] === '.') el.classList.add(part.slice(1)); else el.id = part.slice(1); }
+  const typeScale = { 't-display': 'md-typescale-display-small', 't-headline': 'md-typescale-headline-medium', 't-title-l': 'md-typescale-title-large', 't-title-m': 'md-typescale-title-medium', 't-label': 'md-typescale-label-medium', 't-body-l': 'md-typescale-body-large' };
+  const addClass = (name) => { el.classList.add(name); if (typeScale[name]) el.classList.add(typeScale[name]); };
+  for (const part of m[2].match(/[.#][\w-]+/g) || []) { if (part[0] === '.') addClass(part.slice(1)); else el.id = part.slice(1); }
   for (const [k, v] of Object.entries(props || {})) {
     if (v === undefined || v === null || v === false) continue;
     if (k === 'style' && typeof v === 'object') { for (const [sk, sv] of Object.entries(v)) { if (sk.startsWith('--')) el.style.setProperty(sk, sv); else el.style[sk] = sv; } }
     else if (k === 'dataset') Object.assign(el.dataset, v);
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (k === 'class') v.split(' ').filter(Boolean).forEach((c) => el.classList.add(c));
+    else if (k === 'class') v.split(' ').filter(Boolean).forEach(addClass);
     else if (k in el && k !== 'list' && typeof v !== 'object') el[k] = v;
     else el.setAttribute(k, v === true ? '' : v);
   }
@@ -29,14 +31,22 @@ export function h(spec, props, ...kids) {
 export function icon(name, fill = false) {
   const d = ICONS[fill && ICONS[`${name}-fill`] ? `${name}-fill` : name] || '';
   const s = document.createElement('span'); s.className = 'icon';
+  s.slot = 'icon';
   s.innerHTML = `<svg viewBox="0 -960 960 960" aria-hidden="true"><path d="${d}"/></svg>`;
   return s;
 }
 export function iconBtn(name, label, onclick, cls = '', fill = false) {
-  return h(`button.icon-btn.sl${cls ? `.${cls.split(' ').join('.')}` : ''}`, { title: label, 'aria-label': label, onclick }, icon(name, fill));
+  const classes = cls.split(' ').filter(Boolean);
+  const variant = classes.includes('filled') ? 'md-filled-icon-button' : classes.includes('tonal') ? 'md-filled-tonal-icon-button' : classes.includes('outlined') ? 'md-outlined-icon-button' : 'md-icon-button';
+  const el = h(`${variant}.icon-btn.sl${cls ? `.${classes.join('.')}` : ''}`, { title: label, 'aria-label': label, onclick }, icon(name, fill));
+  el.firstElementChild.slot = 'icon';
+  return el;
 }
 export function btn(label, kind, onclick, ico, extra = '') {
-  return h(`button.btn.sl.${kind}${extra ? `.${extra.split(' ').join('.')}` : ''}`, { onclick }, ico ? icon(ico, kind === 'filled') : null, label);
+  const variant = ({ filled: 'md-filled-button', tonal: 'md-filled-tonal-button', outlined: 'md-outlined-button', text: 'md-text-button', error: 'md-filled-button' })[kind] || 'md-text-button';
+  const el = h(`${variant}.btn.sl.${kind}${extra ? `.${extra.split(' ').join('.')}` : ''}`, { onclick }, ico ? icon(ico, kind === 'filled') : null, label);
+  if (ico) el.firstElementChild.slot = 'icon';
+  return el;
 }
 
 export function fmtTime(s) {
@@ -71,34 +81,41 @@ export function toast(msg, { action, onAction, ms = 4200 } = {}) {
 // ---------- menu
 export function menu(anchor, items, { align = 'left', up = false } = {}) {
   closeMenus();
-  const el = h('div.menu', { role: 'menu' });
+  const el = h('md-menu.menu');
   for (const it of items) {
-    if (it.divider) { el.append(h('div.menu-div')); continue; }
-    if (it.header) { el.append(h('div.menu-head', it.header)); continue; }
-    el.append(h('button.menu-item.sl', { role: 'menuitem', disabled: !!it.disabled, onclick: () => { closeMenus(); it.onClick && it.onClick(); } },
-      it.icon ? icon(it.icon) : h('span.chk', it.checked ? icon('check') : null), h('span', { style: { flex: 1 } }, it.label), it.right || null));
+    if (it.divider) { el.append(h('md-divider')); continue; }
+    const headline = it.header || it.label;
+    const row = h(`md-menu-item.menu-item${it.header ? '.menu-head' : ''}`, { disabled: !!it.disabled || !!it.header, onclick: () => { closeMenus(); it.onClick && it.onClick(); } },
+      h('span', { slot: 'headline' }, headline));
+    if (!it.header && it.icon) { const ic = icon(it.icon); ic.slot = 'start'; row.append(ic); }
+    if (!it.header && it.checked) { const checked = icon('check'); checked.slot = 'end'; row.append(checked); }
+    if (!it.header && it.right) { it.right.slot = 'trailing-supporting-text'; row.append(it.right); }
+    el.append(row);
   }
   document.body.append(el);
-  const r = anchor.getBoundingClientRect(); const w = el.offsetWidth; const hh = el.offsetHeight;
-  let x = align === 'right' ? r.right - w : r.left; let y = up ? r.top - hh - 6 : r.bottom + 6;
-  if (y + hh > innerHeight - 8) y = Math.max(8, r.top - hh - 6);
-  el.style.left = `${clamp(x, 8, innerWidth - w - 8)}px`; el.style.top = `${clamp(y, 8, innerHeight - hh - 8)}px`;
-  setTimeout(() => { const off = (e) => { if (!el.contains(e.target)) { closeMenus(); document.removeEventListener('pointerdown', off, true); } }; document.addEventListener('pointerdown', off, true); }, 0);
+  el.anchorElement = anchor;
+  el.positioning = 'popover';
+  el.anchorCorner = up ? (align === 'right' ? 'start-end' : 'start-start') : (align === 'right' ? 'end-end' : 'end-start');
+  el.menuCorner = up ? (align === 'right' ? 'end-end' : 'end-start') : (align === 'right' ? 'start-end' : 'start-start');
+  el.open = true;
   return el;
 }
-export function closeMenus() { $$('.menu').forEach((m) => m.remove()); }
+export function closeMenus() { $$('#dialog-layer md-menu, body > md-menu').forEach((m) => { m.open = false; m.remove(); }); }
 
 // ---------- dialog
 export function dialog({ title, body, actions, wide, onClose }) {
   const layer = $('#dialog-layer');
-  const scrim = h('div.scrim', { onpointerdown: (e) => { if (e.target === scrim) close(); } });
-  const close = (v) => { scrim.remove(); document.removeEventListener('keydown', esc, true); onClose && onClose(v); };
-  const esc = (e) => { if (e.key === 'Escape' && layer.lastElementChild === scrim) { e.stopPropagation(); close(); } };
-  document.addEventListener('keydown', esc, true);
-  const d = h('div.dialog', { role: 'dialog', 'aria-modal': 'true', style: wide ? { maxWidth: 'min(720px,94vw)', width: '720px' } : {} },
-    title ? h('div.t-headline', { style: { fontSize: '24px' } }, title) : null, body,
-    actions ? h('div.actions', actions.map((a) => btn(a.label, a.kind || 'text', () => { close(a.value); a.onClick && a.onClick(); }))) : null);
-  scrim.append(d); layer.append(scrim);
+  let result;
+  let settled = false;
+  const d = h('md-dialog.dialog', { style: wide ? { '--md-dialog-container-max-width': 'min(720px,94vw)' } : {} },
+    title ? h('div.t-headline', { slot: 'headline' }, title) : null,
+    body ? h('div.dialog-content', { slot: 'content' }, body) : null,
+    actions ? h('div.actions', { slot: 'actions' }, actions.map((a) => btn(a.label, a.kind || 'text', () => { a.onClick && a.onClick(); close(a.value); }))) : null);
+  const close = (v) => { result = v; return d.close(v === undefined ? '' : String(v)); };
+  d.addEventListener('closed', () => { if (settled) return; settled = true; d.remove(); onClose && onClose(result); });
+  d.addEventListener('cancel', () => { result = undefined; });
+  layer.append(d);
+  d.show();
   return { close, el: d };
 }
 export const confirmDialog = (title, text, okLabel = 'OK', danger = false) => new Promise((res) => {
@@ -108,23 +125,26 @@ export const confirmDialog = (title, text, okLabel = 'OK', danger = false) => ne
 
 // ---------- form controls
 export function switchCtl(value, onChange, label) {
-  const b = h('button.switch', { role: 'switch', 'aria-checked': String(!!value), 'aria-label': label || 'toggle', onclick: () => { value = !value; b.setAttribute('aria-checked', String(value)); onChange(value); } });
-  return b;
+  return h('md-switch.switch', { selected: !!value, 'aria-label': label || 'toggle', onchange: (e) => onChange(!!e.currentTarget.selected) });
 }
 export function segmented(options, value, onChange) {
-  const el = h('div.seg');
-  const render = () => { el.innerHTML = ''; for (const [v, label, ico] of options) el.append(h('button.sl' + (v === value ? '.sel' : ''), { onclick: () => { value = v; render(); onChange(v); } }, v === value ? icon('check') : (ico ? icon(ico) : null), label)); };
+  const el = h('div.seg', { role: 'group' });
+  const render = () => { el.replaceChildren(); for (const [v, label, ico] of options) {
+    const active = v === value;
+    const b = h(`${active ? 'md-filled-tonal-button' : 'md-outlined-button'}.seg-item`, { onclick: () => { value = v; render(); onChange(v); } }, ico ? icon(ico) : null, label);
+    if (ico) b.firstElementChild.slot = 'icon';
+    el.append(b);
+  } };
   render(); return el;
 }
 export function slider(min, max, step, value, onInput, fmt = (v) => v) {
-  const input = h('input', { type: 'range', min, max, step, value });
+  const input = h('md-slider.slider', { min, max, step, value, 'aria-label': 'Setting value' });
   const val = h('span.val', fmt(value));
-  const sync = () => input.style.setProperty('--p', `${((input.value - min) / (max - min)) * 100}%`);
-  input.addEventListener('input', () => { sync(); val.textContent = fmt(+input.value); onInput(+input.value); }); sync();
+  input.addEventListener('input', () => { val.textContent = fmt(+input.value); onInput(+input.value); });
   return [input, val];
 }
 export function select(options, value, onChange) {
-  const s = h('select.select', { onchange: () => onChange(s.value) }, options.map(([v, l]) => h('option', { value: v, selected: String(v) === String(value) }, l)));
+  const s = h('md-outlined-select.select', { value: String(value), 'aria-label': 'Choose an option', onchange: () => onChange(s.value) }, options.map(([v, l]) => h('md-select-option', { value: String(v), headline: l, selected: String(v) === String(value) })));
   return s;
 }
 export function setSliderFill(input) { input.style.setProperty('--p', `${((input.value - input.min) / (input.max - input.min)) * 100}%`); }
