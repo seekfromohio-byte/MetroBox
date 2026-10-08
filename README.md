@@ -74,6 +74,8 @@ After publishing a release, update `latest.json` on `main` so the in-app update 
   "notes": "What's new in the latest release..."
 }
 ```
+## Discord
+join discord server pretty plz :3 https://discord.gg/ZhSKNj9KfF
 
 ## Disclaimer
 
