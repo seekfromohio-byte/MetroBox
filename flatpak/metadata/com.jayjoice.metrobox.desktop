@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=MetroBox
+Comment=Browse and stream movies and series
+Exec=run.sh %U
+Terminal=false
+Type=Application
+Icon=com.jayjoice.metrobox
+Categories=AudioVideo;Video;
+StartupWMClass=metrobox

@@ -1,0 +1,32 @@
+app-id: com.jayjoice.metrobox
+default-branch: stable
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '24.08'
+command: run.sh
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --socket=x11
+  - --socket=pulseaudio
+  - --filesystem=xdg-videos
+  - --env=ELECTRON_TRASH=gio
+modules:
+  - name: metrobox
+    buildsystem: simple
+    build-commands:
+      - install -d /app/lib/metrobox
+      - cp -a metrobox/. /app/lib/metrobox/
+      - install -Dm755 metadata/run.sh /app/bin/run.sh
+      - install -Dm644 metadata/com.jayjoice.metrobox.desktop /app/share/applications/com.jayjoice.metrobox.desktop
+      - install -Dm644 metadata/com.jayjoice.metrobox.png /app/share/icons/hicolor/512x512/apps/com.jayjoice.metrobox.png
+    sources:
+      - type: dir
+        path: dist/linux-unpacked
+        dest: metrobox
+      - type: dir
+        path: flatpak/metadata
+        dest: metadata

@@ -35,7 +35,8 @@ try {
 function settings() { return (store.get('settings', {}) || {}); }
 
 // ---------- updates (HyperOS-style: check on launch, notify with what's new) ----------
-// latest.json may contain platform-specific download URLs under linux, win32, and darwin.
+// latest.json may contain platform-specific URLs. Flatpak builds can use a
+// separate bundle URL while regular Linux installs continue to use the DEB.
 // The legacy top-level `url` remains supported for Linux manifests.
 const UPDATE_URL = process.env.MB_UPDATE_URL || 'https://raw.githubusercontent.com/seekfromohio-byte/MetroBox/main/latest.json';
 const cmpVer = (a, b) => {
@@ -51,7 +52,8 @@ async function checkUpdates(manual) {
   const version = String(m.version || '');
   if (!version) throw new Error('Manifest has no version');
   const found = cmpVer(version, cur) > 0;
-  const release = m.platforms ? m.platforms[process.platform] : (process.platform === 'linux' ? m : null);
+  const platformKey = process.platform === 'linux' && process.env.FLATPAK_ID ? 'linuxFlatpak' : process.platform;
+  const release = m.platforms ? (m.platforms[platformKey] || m.platforms[process.platform]) : (process.platform === 'linux' ? m : null);
   const payload = { found, version, current: cur, url: String(release && release.url || ''), notes: String(m.notes || '') };
   if (process.env.MB_DEBUG_UPDATES) console.log('[update]', JSON.stringify(payload));
   if (found) {

@@ -8,12 +8,13 @@
     "email": "239289892+seekfromohio-byte@users.noreply.github.com"
   },
   "main": "main.js",
-  "desktopName": "metrobox.desktop",
+  "desktopName": "com.jayjoice.metrobox.desktop",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder",
     "dist:linux": "electron-builder --linux deb AppImage --x64",
+    "dist:flatpak": "bash flatpak/build.sh",
     "dist:win": "electron-builder --win --x64 --arm64",
     "dist:mac": "electron-builder --mac dmg zip --universal"
   },

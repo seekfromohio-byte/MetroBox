@@ -45,6 +45,12 @@ jobs:
         # Keep publishing centralized in the release job below, which combines
         # artifacts from all three native build runners.
         run: npm run dist -- --publish never ${{ matrix.args }}
+      - name: Build Flatpak bundle
+        if: matrix.name == 'Linux x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          npm run dist:flatpak
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
@@ -72,7 +78,7 @@ jobs:
 
             - Windows support: an NSIS installer for x64 and ARM64 (`MetroBox-Setup.exe`).
             - macOS support: a universal app for Intel and Apple silicon (`MetroBox.dmg` and `MetroBox.zip`).
-            - Linux packages remain available as a Debian package and AppImage.
+            - Linux packages: Debian package, AppImage, and Flatpak bundle (`MetroBox.flatpak`).
             - Player and ffmpeg detection, download locations, and update downloads now follow the host platform.
 
             ## Install notes
