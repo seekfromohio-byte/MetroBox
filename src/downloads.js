@@ -4,6 +4,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { EventEmitter } = require('events');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
@@ -13,15 +14,15 @@ const safe = (s) => String(s).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' '
 const toSec = (t) => { const m = /(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(t); return m ? (+m[1]) * 3600 + (+m[2]) * 60 + parseFloat(m[3]) : 0; };
 
 class Downloads extends EventEmitter {
-  constructor(store, proxy, getSettings) {
+  constructor(store, proxy, getSettings, videosDir = path.join(os.homedir(), 'Videos')) {
     super();
-    this.store = store; this.proxy = proxy; this.getSettings = getSettings;
+    this.store = store; this.proxy = proxy; this.getSettings = getSettings; this.videosDir = videosDir;
     this.items = store.get('downloads', []).map((d) => (d.status === 'running' || d.status === 'queued' ? { ...d, status: 'paused', speed: 0 } : d));
     this.jobs = new Map(); this.queue = [];
   }
 
   dir() {
-    const d = this.getSettings().downloadDir || path.join(require('os').homedir(), 'Videos', 'MetroBox');
+    const d = this.getSettings().downloadDir || path.join(this.videosDir, 'MetroBox');
     fs.mkdirSync(d, { recursive: true });
     return d;
   }
@@ -31,7 +32,7 @@ class Downloads extends EventEmitter {
 
   add({ key, title, poster, option }) {
     if (this.items.find((d) => d.key === key && d.status !== 'error' && d.status !== 'canceled')) return { ok: false, error: 'Already in downloads.' };
-    if (option.dash && !detect(this.getSettings()).ffmpeg) return { ok: false, error: 'ffmpeg is required to download this stream (sudo apt install ffmpeg).' };
+    if (option.dash && !detect(this.getSettings()).ffmpeg) return { ok: false, error: 'ffmpeg is required to download this stream. Install it and add it to PATH, or set its full path in Settings.' };
     const file = path.join(this.dir(), `${safe(title)}.mp4`);
     const item = { id: `${Date.now()}${Math.floor(Math.random() * 1000)}`, key, title, poster, file, status: 'queued', progress: 0, size: 0, speed: 0, error: '', option };
     this.items.unshift(item); this._save(); this._pump();
@@ -80,10 +81,10 @@ class Downloads extends EventEmitter {
   /** Index of the highest-resolution video stream in a DASH manifest (ffprobe), or null. */
   _bestVideo(ffmpegBin, url) {
     return new Promise((resolve) => {
-      const probe = path.join(path.dirname(ffmpegBin), 'ffprobe');
+      const probe = path.join(path.dirname(ffmpegBin), process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe');
       if (!fs.existsSync(probe)) return resolve(null);
       let out = '';
-      const p = spawn(probe, ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=index,width,height,bit_rate', '-of', 'json', url], { stdio: ['ignore', 'pipe', 'ignore'] });
+      const p = spawn(probe, ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=index,width,height,bit_rate', '-of', 'json', url], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
       const t = setTimeout(() => p.kill('SIGKILL'), 25000);
       p.stdout.on('data', (b) => { out += b; });
       p.on('error', () => { clearTimeout(t); resolve(null); });
@@ -105,7 +106,7 @@ class Downloads extends EventEmitter {
     if (item.status === 'canceled') return;
     return new Promise((resolve, reject) => {
       const args = ['-y', '-hide_banner', '-loglevel', 'info', '-i', url, '-map', best === null ? '0:v:0?' : `0:${best}`, '-map', '0:a?', '-c', 'copy', '-movflags', '+faststart', `${item.file}.part.mp4`];
-      const p = spawn(bin, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+      const p = spawn(bin, args, { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
       this.jobs.set(item.id, { abort: () => p.kill('SIGTERM') });
       let dur = 0; let tail = '';
       p.stderr.on('data', (b) => {

@@ -30,7 +30,7 @@ class StreamProxy {
 
   // Live HEVC→H.264 transcode of a stream through system ffmpeg, served as fragmented MP4.
   // Reusing a token kills the previous ffmpeg for it, which is how seeking works.
-  transcodeUrl(url, headers, ss = 0, token = null) {
+  transcodeUrl(url, headers, ss = 0, token = null, ffmpegBin = 'ffmpeg') {
     if (!this.transcoders) this.transcoders = new Map();
     if (!token) {
       token = crypto.randomBytes(8).toString('base64url');
@@ -41,7 +41,7 @@ class StreamProxy {
     }
     const prev = this.transcoders.get(token);
     if (prev) { try { prev.child.kill('SIGKILL'); } catch { /* gone */ } }
-    this.transcoders.set(token, { url, headers: { ...headers }, ss: Number(ss) || 0, child: null });
+    this.transcoders.set(token, { url, headers: { ...headers }, ss: Number(ss) || 0, child: null, ffmpegBin });
     return `http://127.0.0.1:${this.port}/t/${token}/${encodeURIComponent(url)}/${Number(ss) || 0}`;
   }
 
@@ -54,14 +54,14 @@ class StreamProxy {
     const t = this.transcoders && this.transcoders.get(token);
     if (!t) { res.writeHead(404, cors); return res.end(); }
     const hdr = Object.entries(t.headers || {}).map(([k, v]) => `${k}: ${v}\r\n`).join('') + '\r\n';
-    const child = spawn('ffmpeg', [
+    const child = spawn(t.ffmpegBin || 'ffmpeg', [
       '-hide_banner', '-loglevel', 'error', '-headers', hdr, '-i', url,
       '-map', '0:v:0', '-map', '0:a:0?',
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-maxrate', '4500k', '-bufsize', '9M',
       '-vf', "scale=-2:'min(720,ih)'",
       '-c:a', 'aac', '-ac', '2', '-b:a', '160k',
       '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4', 'pipe:1',
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     t.child = child;
     if (process.env.MB_DEBUG_UPDATES) console.log('[tc] ffmpeg spawned');
     let stderr = '';

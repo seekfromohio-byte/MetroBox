@@ -24,7 +24,7 @@ const merge = (base, over) => {
   return out;
 };
 
-export const S = { settings: structuredClone(DEFAULTS), data: null, version: '', mock: false };
+export const S = { settings: structuredClone(DEFAULTS), data: null, version: '', mock: false, platform: 'linux', defaultDownloadDir: '' };
 const listeners = {};
 export const on = (ev, fn) => { (listeners[ev] ||= new Set()).add(fn); return () => listeners[ev].delete(fn); };
 export const emit = (ev, v) => (listeners[ev] ? [...listeners[ev]].forEach((f) => f(v)) : 0);
@@ -35,7 +35,7 @@ export function newProfile(name, i = 0) {
 
 export async function loadState() {
   const r = await window.mb.load();
-  S.version = r.version; S.mock = r.mock;
+  S.version = r.version; S.mock = r.mock; S.platform = r.platform || 'linux'; S.defaultDownloadDir = r.defaultDownloadDir || '';
   S.settings = merge(DEFAULTS, r.settings || {});
   S.data = r.profiles && r.profiles.list && r.profiles.list.length ? r.profiles : { active: null, list: [newProfile('Me')] };
   if (!S.data.list.find((p) => p.id === S.data.active)) S.data.active = S.data.list[0].id;

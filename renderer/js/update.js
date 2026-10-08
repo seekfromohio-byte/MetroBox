@@ -4,12 +4,17 @@ import { S } from './state.js';
 /** HyperOS-updater-style dialog: big version, what's new, Download. */
 export function showUpdateDialog(u) {
   if (!u || !u.version) return;
+  const installHint = S.platform === 'win32'
+    ? 'Download and run the Windows installer.'
+    : S.platform === 'darwin'
+      ? 'Open the disk image and drag MetroBox into Applications.'
+      : 'Download and install the Linux package.';
   dialog({
     title: `MetroBox ${u.version}`,
     body: h('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
       h('div.t-label.t-muted', `New version ${u.version} · you have ${u.current || S.version}`),
       u.notes ? h('p.t-body-l', { style: { whiteSpace: 'pre-wrap', margin: 0 } }, u.notes) : h('p.t-body-l.t-muted', { style: { margin: 0 } }, 'No release notes were provided.'),
-      h('div.t-label.t-muted', '* The download opens in your browser. Install it with your package manager.')),
+      h('div.t-label.t-muted', u.url ? `${installHint} The download opens in your browser.` : 'No installer has been published for this platform yet.')),
     actions: [
       { label: 'Later' },
       u.url ? { label: 'Download', kind: 'filled', onClick: () => window.mb.openUrl(u.url) } : null,

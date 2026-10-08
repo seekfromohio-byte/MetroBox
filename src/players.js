@@ -6,9 +6,10 @@ const path = require('path');
 
 function which(bin, custom) {
   if (custom && fs.existsSync(custom)) return custom;
-  const r = spawnSync('sh', ['-c', `command -v ${bin}`], { encoding: 'utf8' });
+  const command = process.platform === 'win32' ? 'where.exe' : 'which';
+  const r = spawnSync(command, [bin], { encoding: 'utf8', windowsHide: true });
   const p = (r.stdout || '').trim();
-  return p || null;
+  return p.split(/\r?\n/)[0] || null;
 }
 
 function detect(settings = {}) {
@@ -20,7 +21,7 @@ function detect(settings = {}) {
 /** Launch VLC or mpv on a proxied stream URL. Returns { ok, error? } */
 async function openExternal({ engine, url, title, subtitleText, startAt, settings }) {
   const bin = detect(settings)[engine];
-  if (!bin) return { ok: false, error: `${engine} was not found. Install it (sudo apt install ${engine}) or set its path in Settings.` };
+  if (!bin) return { ok: false, error: `${engine} was not found. Install it and add it to PATH, or set its full path in Settings.` };
   const args = [];
   let subFile = null;
   if (subtitleText) {
@@ -37,11 +38,11 @@ async function openExternal({ engine, url, title, subtitleText, startAt, setting
     if (subFile) args.push(`--sub-file=${subFile}`);
   }
   try {
-    const child = spawn(bin, args, { detached: true, stdio: 'ignore' });
+    const child = spawn(bin, args, { detached: true, stdio: 'ignore', windowsHide: true });
     child.on('exit', () => { if (subFile) fs.unlink(subFile, () => {}); });
     child.unref();
     return await new Promise((resolve) => {
-      child.once('error', (e) => resolve({ ok: false, error: e.message }));
+      child.once('error', (e) => { if (subFile) fs.unlink(subFile, () => {}); resolve({ ok: false, error: e.message }); });
       setTimeout(() => resolve({ ok: true }), 400);
     });
   } catch (e) { return { ok: false, error: e.message }; }

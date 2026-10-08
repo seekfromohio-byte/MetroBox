@@ -45,13 +45,13 @@ export function mountSettings(page, { rerender }) {
   const players = h('span.status', h('i'), 'Checking…'); const status = h('div', { style: { display: 'flex', gap: '16px', flexWrap: 'wrap' } });
   const detect = async () => { try { const d = await window.mb.detectPlayers(); status.replaceChildren(...[['VLC', d.vlc], ['mpv', d.mpv], ['ffmpeg', d.ffmpeg]].map(([n, p]) => h('span.status' + (p ? '.ok' : '.bad'), { title: p || 'not found' }, h('i'), `${n}: ${p ? 'found' : 'not found'}`))); } catch { /* ignore */ } };
   detect();
-  const pathInput = (key, ph) => h('label.field', { style: { width: '260px' } }, h('input', { type: 'text', value: P[key], placeholder: ph, 'aria-label': ph, onchange: (e) => { P[key] = e.target.value.trim(); saveSettings('player'); detect(); } }));
+  const pathInput = (key) => h('label.field', { style: { width: '260px' } }, h('input', { type: 'text', value: P[key], placeholder: 'Optional full executable path', 'aria-label': `${key.replace('Path', '')} executable path`, onchange: (e) => { P[key] = e.target.value.trim(); saveSettings('player'); detect(); } }));
 
   const profList = h('div');
   const drawProf = () => profList.replaceChildren(...S.data.list.map((p) => h('div.srow', avatar(p, 40), h('div.lbl', p.name, h('small', `${p.mylist.length} in list · ${p.history.length} watched`)), iconBtn('edit', 'Edit profile', () => editProfile(p, false, () => { drawProf(); }))))
     , S.data.list.length < 6 ? h('div.srow', h('div.lbl', 'Add a profile', h('small', 'Each profile keeps its own list, history and progress.')), btn('Add', 'tonal', () => editProfile(newProfile('', S.data.list.length), true, drawProf), 'person_add')) : null);
   drawProf();
-  const dirLabel = h('span.t-muted', { style: { maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'rtl' } }, S.settings.downloadDir || '~/Videos/MetroBox');
+  const dirLabel = h('span.t-muted', { style: { maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'rtl' } }, S.settings.downloadDir || S.defaultDownloadDir || '~/Videos/MetroBox');
 
   page.append(h('div.settings', h('h1.t-headline.page-title', { style: { margin: 0 } }, 'Settings'),
     group('Appearance',
@@ -89,8 +89,8 @@ export function mountSettings(page, { rerender }) {
       srow('Outline', null, select([['none', 'None'], ['shadow', 'Shadow'], ['outline', 'Outline']], sub.edge, (v) => sp('edge', v))),
       srow('Font', null, select([['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Mono']], sub.font, (v) => sp('font', v))),
       srow('Height from bottom', null, posR, posV)),
-    group('External players & tools', srow('Detected', 'VLC / mpv for external playback, ffmpeg for downloading DASH streams.', status),
-      srow('VLC path', 'Leave empty to use the system one.', pathInput('vlcPath', '/usr/bin/vlc')), srow('mpv path', null, pathInput('mpvPath', '/usr/bin/mpv')), srow('ffmpeg path', null, pathInput('ffmpegPath', '/usr/bin/ffmpeg'))),
+    group('External players & tools', srow('Detected', 'VLC / mpv for external playback, ffmpeg for DASH downloads and video transcoding. Install tools and add them to PATH, or enter a full path below.', status),
+      srow('VLC path', 'Leave blank to detect it automatically.', pathInput('vlcPath')), srow('mpv path', null, pathInput('mpvPath')), srow('ffmpeg path', null, pathInput('ffmpegPath'))),
     group('Downloads', srow('Save to', null, dirLabel, btn('Change', 'tonal', async () => { const d = await window.mb.pickDir(); if (d) { S.settings.downloadDir = d; saveSettings('settings'); dirLabel.textContent = d; } }, 'folder_open'))),
     group('Profiles', profList),
     group('Data',

@@ -22,7 +22,10 @@ if (!app.requestSingleInstanceLock()) { app.quit(); } else {
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Enable VAAPI hardware video decode paths on Linux (HEVC where the GPU supports it).
-try { app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecodeLinuxGL'); } catch { /* ignore */ }
+if (process.platform === 'linux') {
+  try { app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecodeLinuxGL'); } catch { /* ignore */ }
+}
+if (process.platform === 'win32') app.setAppUserModelId('com.jayjoice.metrobox');
 // Hardware acceleration can be switched off in Settings (blank/green video on some GPU drivers). Must be decided before ready.
 try {
   const early = new Store(path.join(app.getPath('userData'), 'data')).get('settings', {}) || {};
@@ -32,8 +35,8 @@ try {
 function settings() { return (store.get('settings', {}) || {}); }
 
 // ---------- updates (HyperOS-style: check on launch, notify with what's new) ----------
-// Host a latest.json next to your deb releases and point UPDATE_URL at it:
-//   { "version": "2.0.7", "url": "https://…/metrobox_2.0.7_amd64.deb", "notes": "What's new…" }
+// latest.json may contain platform-specific download URLs under linux, win32, and darwin.
+// The legacy top-level `url` remains supported for Linux manifests.
 const UPDATE_URL = process.env.MB_UPDATE_URL || 'https://raw.githubusercontent.com/seekfromohio-byte/MetroBox/main/latest.json';
 const cmpVer = (a, b) => {
   const pa = String(a).split('.').map((x) => parseInt(x) || 0); const pb = String(b).split('.').map((x) => parseInt(x) || 0);
@@ -48,7 +51,8 @@ async function checkUpdates(manual) {
   const version = String(m.version || '');
   if (!version) throw new Error('Manifest has no version');
   const found = cmpVer(version, cur) > 0;
-  const payload = { found, version, current: cur, url: String(m.url || ''), notes: String(m.notes || '') };
+  const release = m.platforms ? m.platforms[process.platform] : (process.platform === 'linux' ? m : null);
+  const payload = { found, version, current: cur, url: String(release && release.url || ''), notes: String(m.notes || '') };
   if (process.env.MB_DEBUG_UPDATES) console.log('[update]', JSON.stringify(payload));
   if (found) {
     if (win && !win.isDestroyed()) win.webContents.send('update:found', payload);
@@ -67,7 +71,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: b.width, height: b.height, x: b.x, y: b.y, minWidth: 720, minHeight: 520,
     title: 'MetroBox', backgroundColor: '#141318', autoHideMenuBar: true, show: false,
-    icon: path.join(__dirname, 'build', 'icon.png'),
+    ...(process.platform === 'darwin' ? {} : { icon: path.join(__dirname, 'build', 'icon.png') }),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false, backgroundThrottling: false },
   });
   if (b.maximized) win.maximize();
@@ -89,12 +93,21 @@ async function decodeText(buf) {
 }
 
 app.whenReady().then(async () => {
-  Menu.setApplicationMenu(null);
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { label: app.name, submenu: [
+        { role: 'about' }, { type: 'separator' }, { role: 'services' }, { type: 'separator' },
+        { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' },
+      ] },
+      { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+      { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }] },
+    ]));
+  } else Menu.setApplicationMenu(null);
   const data = app.getPath('userData');
   store = new Store(path.join(data, 'data'));
   proxy = new StreamProxy(); await proxy.start();
   api = process.env.MB_MOCK ? new (require('./src/mock').Mock)(proxy) : new MovieBox(path.join(data, 'cache'));
-  downloads = new Downloads(store, proxy, settings);
+  downloads = new Downloads(store, proxy, settings, app.getPath('videos'));
   downloads.on('change', (items) => { if (win && !win.isDestroyed()) win.webContents.send('dl:change', items); });
 
   protocol.handle('app', (req) => {
@@ -106,7 +119,7 @@ app.whenReady().then(async () => {
   });
 
   const ok = (ch, fn) => ipcMain.handle(ch, wrap(fn));
-  ok('load', () => ({ settings: store.get('settings', null), profiles: store.get('profiles', null), version: app.getVersion(), mock: !!process.env.MB_MOCK, platform: process.platform }));
+  ok('load', () => ({ settings: store.get('settings', null), profiles: store.get('profiles', null), version: app.getVersion(), mock: !!process.env.MB_MOCK, platform: process.platform, defaultDownloadDir: path.join(app.getPath('videos'), 'MetroBox') }));
   ok('save', (key, value) => { if (!['settings', 'profiles'].includes(key)) throw new Error('bad key'); store.set(key, value); return true; });
   ok('api:home', (page) => api.home(page));
   ok('api:search', (q, page) => api.search(q, page));
@@ -115,7 +128,11 @@ app.whenReady().then(async () => {
     const opts = await api.playOptions(id, se, ep);
     return opts.map((o) => ({ ...o, src: proxy.urlFor(o.url, o.headers) }));
   });
-  ok('api:transcode', ({ url, headers, ss }) => proxy.transcodeUrl(url, headers, ss));
+  ok('api:transcode', ({ url, headers, ss }) => {
+    const ffmpeg = players.detect(settings().player || {}).ffmpeg;
+    if (!ffmpeg) throw new Error('ffmpeg was not found. Install it and add it to PATH, or set its full path in Settings.');
+    return proxy.transcodeUrl(url, headers, ss, null, ffmpeg);
+  });
   ok('api:captions', (id, sid) => api.captions(id, sid));
   ok('api:subtitle', async (url) => {
     const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20000) });
@@ -196,4 +213,4 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => { if (store) store.flushAll(); });
-app.on('window-all-closed', () => { app.quit(); });
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

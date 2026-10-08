@@ -5,7 +5,7 @@ export function mountDownloads(page) {
   const list = h('div'); let items = [];
   page.append(h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' } }, h('h1.t-headline.page-title', { style: { flex: 1, margin: 0 } }, 'Downloads'), btn('Open folder', 'tonal', () => window.mb.dl.openFolder(), 'folder_open')), list);
   const draw = () => {
-    list.replaceChildren(...(items.length ? items.map(card) : [emptyState('download', 'No downloads yet', 'Use the download button on a movie or episode. DASH streams need ffmpeg (sudo apt install ffmpeg).')]));
+    list.replaceChildren(...(items.length ? items.map(card) : [emptyState('download', 'No downloads yet', 'Use the download button on a movie or episode. DASH downloads require ffmpeg, which you can install separately and add to PATH.')]));
   };
   const statusText = (d) => ({ queued: 'Queued', running: d.speedUnit === 'x' ? `Downloading · ${d.speed ? `${d.speed.toFixed(1)}× speed` : '…'}` : `Downloading · ${d.speed ? `${fmtBytes(d.speed)}/s` : '…'}`, done: 'Finished', error: `Failed: ${d.error}`, canceled: 'Canceled', paused: 'Paused (app closed)' }[d.status] || d.status);
   function card(d) {

@@ -1,41 +1,73 @@
 # MetroBox
+
 <img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/bdba3da5-4afc-4812-afcd-bc47bc0afcbc" />
 
-Supported OS: Linux. 
+MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Customize Material 3 colors, shapes, fonts, card size and subtitle styling.
 
-Not Supported (Yet): Windows, MacOs
+## Supported platforms
 
-Browse, search and stream movies and series from MovieBox with a featured billboard,
-rows, profiles, My List, continue watching, downloads, and a built-in player with
-subtitles, quality selection and resume. Fully customizable: Material 3 color themes,
-shapes, fonts, card size and subtitle styling. VLC or mpv can be used as the player
-instead (streams are HEVC, so external players are used automatically on systems
-without an HEVC decoder). NO SUBSCRIPTION, NO ADS, AND NO LOGIN. Just Watch Your Favorite Shows and Done!
+- **Windows:** x64 and ARM64
+- **macOS:** Intel and Apple silicon (universal app)
+- **Linux:** x64 Debian/Ubuntu packages and AppImage
 
-## Install (Debian / Ubuntu)
+Video codec and hardware-decoding support depends on the device, operating system and graphics hardware. VLC or mpv can be used for external playback. Install ffmpeg separately for DASH downloads and software transcoding; MetroBox detects it from `PATH`, or you can set its full path in Settings.
 
-Download the latest deb from [Releases](https://github.com/seekfromohio-byte/MetroBox/releases/latest)
-or directly:
+## Download and install
 
-    https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb
+Download the installer for your system from [Releases](https://github.com/seekfromohio-byte/MetroBox/releases/latest):
 
-    sudo dpkg -i metrobox_amd64.deb
+Windows and macOS installers will be attached by the first tagged release built from this version of the repo.
 
-## Update checker
+- **Windows:** `MetroBox-Setup.exe` — run the installer.
+- **macOS:** `MetroBox.dmg` — open it and drag MetroBox to Applications. The universal app runs on Intel and Apple silicon Macs.
+- **Debian / Ubuntu:** `metrobox_amd64.deb` — install with `sudo apt install ./metrobox_amd64.deb`.
+- **Other Linux distributions:** `metrobox_amd64.AppImage` — make it executable, then run it.
 
-The app checks `latest.json` in this repo at launch and notifies about new versions.
-Release process: build the deb, attach it to a GitHub release as `metrobox_amd64.deb`,
-and update `latest.json`:
+The Windows and macOS builds are currently unsigned. Windows may show a SmartScreen warning, and macOS may require you to approve opening the app in Privacy & Security. Signed releases will need a Windows signing certificate and an Apple Developer ID certificate with notarization configured in the release workflow.
+
+## Build from source
+
+Install Node.js 22.12 or newer, then run:
+
+```sh
+npm ci
+npm start
+```
+
+Build on the target platform (cross-platform builds should use the matching operating system):
+
+```sh
+npm run dist:linux
+npm run dist:win
+npm run dist:mac
+```
+
+Installers are written to `dist/`. macOS builds produce a universal DMG and ZIP, Windows builds produce an x64/ARM64 NSIS installer, and Linux builds produce a Debian package and AppImage.
+
+## Release builds
+
+Pushing a version tag such as `v2.0.9` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
+
+After publishing a release, update `latest.json` on `main` so the in-app update checker can link to the right installer for each operating system:
 
 ```json
 {
-  "version": "2.0.7",
-  "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb",
-  "notes": "What's new..."
+  "version": "2.0.9",
+  "platforms": {
+    "linux": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
+    },
+    "win32": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox-Setup.exe"
+    },
+    "darwin": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
+    }
+  },
+  "notes": "What's new in 2.0.9..."
 }
 ```
 
 ## Disclaimer
 
-An unofficial, community-made client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project.
-Not affiliated with MovieBox.
+MetroBox is not affiliated with MovieBox.
