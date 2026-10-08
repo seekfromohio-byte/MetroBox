@@ -63,6 +63,17 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          name: MetroBox ${{ github.ref_name }}
+          body: |
+            ## What's changed
+
+            - Windows support: an NSIS installer for x64 and ARM64 (`MetroBox-Setup.exe`).
+            - macOS support: a universal app for Intel and Apple silicon (`MetroBox.dmg` and `MetroBox.zip`).
+            - Linux packages remain available as a Debian package and AppImage.
+            - Player and ffmpeg detection, download locations, and update downloads now follow the host platform.
+
+            ## Install notes
+
+            The Windows and macOS builds are unsigned. Windows may show SmartScreen, and macOS may ask you to approve opening MetroBox in Privacy & Security.
           fail_on_unmatched_files: true
           files: dist/*

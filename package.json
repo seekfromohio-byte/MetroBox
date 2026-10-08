@@ -3,7 +3,10 @@
   "productName": "MetroBox",
   "version": "2.0.8",
   "description": "MetroBox - Material 3 streaming client. Made by JayJoice.",
-  "author": "JayJoice",
+  "author": {
+    "name": "JayJoice",
+    "email": "239289892+seekfromohio-byte@users.noreply.github.com"
+  },
   "main": "main.js",
   "desktopName": "metrobox.desktop",
   "license": "MIT",
@@ -16,7 +19,7 @@
   },
   "devDependencies": {
     "electron": "44.7.0",
-    "electron-builder": "26.17.0"
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.jayjoice.metrobox",
