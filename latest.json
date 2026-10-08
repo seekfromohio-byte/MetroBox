@@ -1,8 +1,11 @@
 {
-  "version": "2.0.9",
+  "version": "2.0.10",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
+    },
+    "linuxFlatpak": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.flatpak"
     },
     "win32": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox-Setup.exe"
@@ -11,5 +14,5 @@
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "MetroBox 2.0.9 adds Windows support with x64 and ARM64 installers and macOS support with a universal app for Intel and Apple silicon. Linux DEB and AppImage packages remain available. Tool detection, download locations, and update downloads now follow the host platform."
+  "notes": "MetroBox 2.0.10 adds a Flatpak package for Linux. Windows x64 and ARM64 installers, a universal macOS app, and Linux DEB and AppImage packages are also available. The Flatpak uses the built-in player inside its sandbox."
 }

@@ -56,7 +56,7 @@ After publishing a release, update `latest.json` on `main` so the in-app update 
 
 ```json
 {
-  "version": "2.0.9",
+  "version": "2.0.10",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
