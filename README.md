@@ -1,7 +1,7 @@
 # MetroBox
 <img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/bdba3da5-4afc-4812-afcd-bc47bc0afcbc" />
 
-Supported Platform: Linux. 
+Supported OS: Linux. 
 
 Not Supported (Yet): Windows, MacOs
 
@@ -10,7 +10,7 @@ rows, profiles, My List, continue watching, downloads, and a built-in player wit
 subtitles, quality selection and resume. Fully customizable: Material 3 color themes,
 shapes, fonts, card size and subtitle styling. VLC or mpv can be used as the player
 instead (streams are HEVC, so external players are used automatically on systems
-without an HEVC decoder).
+without an HEVC decoder). NO SUBSCRIPTION, NO ADS, AND NO LOGIN. Just Watch Your Favorite Shows and Done!
 
 ## Install (Debian / Ubuntu)
 
