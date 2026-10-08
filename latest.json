@@ -1,5 +1,15 @@
 {
-  "version": "2.0.8",
-  "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb",
-  "notes": "What's new in 2.0.8 - the built-in player works without VLC/mpv:\n- On PCs with Intel/AMD graphics (Skylake / RX460 or newer), HEVC streams now play directly in the built-in player using hardware decoding\n- On older PCs without HEVC hardware, the built-in player can now transcode HEVC to H.264 with ffmpeg (Settings > Player) - install ffmpeg if you don't have VLC or mpv\n- Seeking works in transcode mode\n- 'Play here (transcoded)' added to the format-unsupported dialog"
+  "version": "2.0.9",
+  "platforms": {
+    "linux": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
+    },
+    "win32": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox-Setup.exe"
+    },
+    "darwin": {
+      "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
+    }
+  },
+  "notes": "MetroBox 2.0.9 adds Windows support with x64 and ARM64 installers and macOS support with a universal app for Intel and Apple silicon. Linux DEB and AppImage packages remain available. Tool detection, download locations, and update downloads now follow the host platform."
 }
