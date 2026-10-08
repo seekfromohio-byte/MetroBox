@@ -41,7 +41,10 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
       - name: Build installers
-        run: npm run dist -- ${{ matrix.args }}
+        # A v* tag makes electron-builder infer GitHub publishing by default.
+        # Keep publishing centralized in the release job below, which combines
+        # artifacts from all three native build runners.
+        run: npm run dist -- --publish never ${{ matrix.args }}
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
