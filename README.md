@@ -53,13 +53,13 @@ For a Flatpak build, install Flatpak and flatpak-builder, then build the Linux a
 
 ## Release builds
 
-Pushing a version tag such as `v2.0.11` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
+Pushing a version tag such as `v2.0.12` runs [the release workflow](.github/workflows/release.yml). It builds each platform on its native GitHub Actions runner and attaches the installers to a GitHub release. The workflow reads the app version from the tag.
 
 After publishing a release, update `latest.json` on `main` so the in-app update checker can link to the right installer for each operating system:
 
 ```json
 {
-  "version": "2.0.11",
+  "version": "2.0.12",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
@@ -74,7 +74,7 @@ After publishing a release, update `latest.json` on `main` so the in-app update 
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "Material 3 components from Google's Material Web are now used throughout MetroBox."
+  "notes": "Fixed custom component creation so Material Web buttons, switches, sliders and selects render correctly."
 }
 ```
 ## Discord

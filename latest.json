@@ -1,5 +1,5 @@
 {
-  "version": "2.0.11",
+  "version": "2.0.12",
   "platforms": {
     "linux": {
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/metrobox_amd64.deb"
@@ -14,5 +14,5 @@
       "url": "https://github.com/seekfromohio-byte/MetroBox/releases/latest/download/MetroBox.dmg"
     }
   },
-  "notes": "MetroBox 2.0.11 adopts Google's Material Web components for its Material 3 controls, dialogs, menus, tabs, and typography. Theme colors, shapes, and fonts now feed the official Material 3 design tokens."
+  "notes": "Fixed Material Web custom tag creation so buttons, switches, sliders, selects, chips, tabs, menus, and dialogs render and work correctly."
 }

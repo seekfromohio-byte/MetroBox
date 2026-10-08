@@ -9,7 +9,7 @@ export function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t 
 /** Hyperscript: h('div.card.big#id', {onclick, style:{}, dataset:{}}, ...children) */
 export function h(spec, props, ...kids) {
   if (props !== undefined && (props === null || typeof props !== 'object' || props instanceof Node || Array.isArray(props))) { kids.unshift(props); props = null; }
-  const m = /^([a-z0-9]*)((?:[.#][\w-]+)*)$/i.exec(spec) || [null, 'div', ''];
+  const m = /^([a-z][a-z0-9-]*)((?:[.#][\w-]+)*)$/i.exec(spec) || [null, 'div', ''];
   const el = document.createElement(m[1] || 'div');
   const typeScale = { 't-display': 'md-typescale-display-small', 't-headline': 'md-typescale-headline-medium', 't-title-l': 'md-typescale-title-large', 't-title-m': 'md-typescale-title-medium', 't-label': 'md-typescale-label-medium', 't-body-l': 'md-typescale-body-large' };
   const addClass = (name) => { el.classList.add(name); if (typeScale[name]) el.classList.add(typeScale[name]); };

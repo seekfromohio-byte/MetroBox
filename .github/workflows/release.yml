@@ -76,7 +76,7 @@ jobs:
           body: |
             ## What's changed
 
-            - The interface now uses Google's open-source Material Web components and Material 3 design tokens for controls, menus, dialogs, tabs, typography, and dynamic theme colors.
+            - Fixed custom element creation for Google's Material Web components, so Material 3 buttons, switches, sliders, selects, chips, tabs, menus, and dialogs now render and work correctly.
 
             ## Available downloads
 
