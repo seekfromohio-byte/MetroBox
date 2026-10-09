@@ -2,7 +2,7 @@
 
 <img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/bdba3da5-4afc-4812-afcd-bc47bc0afcbc" />
 
-MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Its responsive Material 3-inspired interface supports customizable colors, shapes, fonts, card size and subtitle styling. (Bugs are to be expected so create an issue in (Issues)of what u are experiencing
+MetroBox is an unofficial community-made desktop client built on the [MovieBox-TUI](https://github.com/mesamirh/MovieBox-Tui) project. Browse, search and stream movies and series with a featured billboard, profiles, My List, continue watching, downloads, and a built-in player with subtitles, quality selection and resume. Its responsive Material 3-inspired interface supports customizable colors, shapes, fonts, card size and subtitle styling. (Bugs are to be expected so create an issue in (Issues)of what u are experiencing)
 
 ## Supported platforms
 
